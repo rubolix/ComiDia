@@ -234,4 +234,58 @@ class DatabaseIntegrationTest {
         assertEquals(1, categories.size)
         assertEquals("Weeknight Dinners", categories[0].name)
     }
+
+    @Test
+    fun shoppingListPreferencesWorkflow() = runTest {
+        val recipeDao = db.recipeDao()
+        val weekStart = "2024-01-15"
+
+        // Save some preferences
+        recipeDao.insertIngredientPreference(UserIngredientPreference(
+            weekStartDate = weekStart,
+            ingredientName = "onion",
+            doNotBuy = true
+        ))
+        recipeDao.insertIngredientPreference(UserIngredientPreference(
+            weekStartDate = weekStart,
+            ingredientName = "garlic",
+            needsChecking = true
+        ))
+
+        // Verify retrieval
+        val prefs = recipeDao.getIngredientPreferences(weekStart).first()
+        assertEquals(2, prefs.size)
+        assertTrue(prefs.find { it.ingredientName == "onion" }!!.doNotBuy)
+        assertTrue(prefs.find { it.ingredientName == "garlic" }!!.needsChecking)
+
+        // Clear one
+        recipeDao.deleteIngredientPreference(weekStart, "onion")
+        val updated = recipeDao.getIngredientPreferences(weekStart).first()
+        assertEquals(1, updated.size)
+        assertEquals("garlic", updated[0].ingredientName)
+    }
+
+    @Test
+    fun favoritesLogic_population() = runTest {
+        val recipeDao = db.recipeDao()
+        val mealPlanDao = db.mealPlanDao()
+        
+        // 1. Create standard Favorites tag
+        recipeDao.insertTag(TagEntity(id = "fav-tag", name = "Favorites"))
+        
+        // 2. Create recipes: one high rated, one low
+        recipeDao.insertRecipe(RecipeEntity(id = "r-high", name = "Good", rating = 5f))
+        recipeDao.insertRecipe(RecipeEntity(id = "r-low", name = "Bad", rating = 2f))
+        
+        // 3. Add usage for the high rated one
+        mealPlanDao.addRecipeToSlot("2024-01-15", "dinner", "r-high")
+        
+        // 4. Trigger repository logic (we simulate the repository call or just the Dao parts)
+        val topRated = recipeDao.getRecipesByMinRating(4f)
+        assertEquals(1, topRated.size)
+        assertEquals("r-high", topRated[0].id)
+        
+        val usage = recipeDao.getRecipeUsageCountsSince(0) // all time for test
+        assertTrue(usage.any { it.recipeId == "r-high" && it.count >= 1 })
+    }
 }

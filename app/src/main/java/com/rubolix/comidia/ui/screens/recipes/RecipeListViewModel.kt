@@ -9,6 +9,14 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+enum class RecipeSortMode(val label: String) {
+    LATEST("Latest"),
+    TOP_HITS("Top Hits"),
+    ALPHABETICAL("A-Z"),
+    BY_RATING("Rating"),
+    BY_FREQUENCY("Frequency")
+}
+
 @HiltViewModel
 class RecipeListViewModel @Inject constructor(
     private val repository: RecipeRepository
@@ -17,14 +25,20 @@ class RecipeListViewModel @Inject constructor(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
 
-    private val _viewMode = MutableStateFlow(RecipeViewMode.LATEST)
-    val viewMode: StateFlow<RecipeViewMode> = _viewMode
+    private val _sortMode = MutableStateFlow(RecipeSortMode.LATEST)
+    val sortMode: StateFlow<RecipeSortMode> = _sortMode
 
-    private val recipesByLatest: StateFlow<List<RecipeWithTagsAndCategories>> =
-        repository.getRecipesByLatest()
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    private val _selectedTagId = MutableStateFlow<String?>(null)
+    val selectedTagId: StateFlow<String?> = _selectedTagId
 
-    private val recipesByName: StateFlow<List<RecipeWithTagsAndCategories>> =
+    private val _selectedCategoryId = MutableStateFlow<String?>(null)
+    val selectedCategoryId: StateFlow<String?> = _selectedCategoryId
+
+    // View State: show categories grid or flat list
+    private val _showCategoriesGrid = MutableStateFlow(true)
+    val showCategoriesGrid: StateFlow<Boolean> = _showCategoriesGrid
+
+    val allRecipes: StateFlow<List<RecipeWithTagsAndCategories>> =
         repository.getAllRecipesWithTagsAndCategories()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -34,35 +48,53 @@ class RecipeListViewModel @Inject constructor(
     val categories: StateFlow<List<RecipeCategoryEntity>> = repository.getAllCategories()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _selectedTagFilter = MutableStateFlow<String?>(null)
-    val selectedTagFilter: StateFlow<String?> = _selectedTagFilter
+    init {
+        viewModelScope.launch {
+            repository.updateFavoritesTag()
+            // If no categories exist, default to flat list
+            categories.collect { if (it.isEmpty()) _showCategoriesGrid.value = false }
+        }
+    }
 
     val filteredRecipes: StateFlow<List<RecipeWithTagsAndCategories>> = combine(
-        recipesByLatest, recipesByName, _searchQuery, _selectedTagFilter, _viewMode
-    ) { latest, byName, query, tagId, mode ->
-        val source = if (mode == RecipeViewMode.LATEST) latest else byName
-        source.filter { rwt ->
+        allRecipes, _searchQuery, _sortMode, _selectedTagId, _selectedCategoryId
+    ) { recipes, query, sort, tagId, catId ->
+        var result = recipes.filter { rwt ->
             val matchesQuery = query.isBlank() || rwt.recipe.name.contains(query, ignoreCase = true)
             val matchesTag = tagId == null || rwt.tags.any { it.id == tagId }
-            matchesQuery && matchesTag
+            val matchesCat = catId == null || rwt.categories.any { it.id == catId }
+            matchesQuery && matchesTag && matchesCat
         }
+
+        result = when (sort) {
+            RecipeSortMode.LATEST -> result.sortedByDescending { it.recipe.updatedAt }
+            RecipeSortMode.ALPHABETICAL -> result.sortedBy { it.recipe.name.lowercase() }
+            RecipeSortMode.BY_RATING -> result.sortedByDescending { it.recipe.rating }
+            RecipeSortMode.TOP_HITS -> result.sortedByDescending { it.recipe.rating } // Add frequency logic later if needed
+            RecipeSortMode.BY_FREQUENCY -> result // Placeholder
+        }
+        result
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun onSearchQueryChange(query: String) { _searchQuery.value = query }
-
-    fun onTagFilterChange(tagId: String?) { _selectedTagFilter.value = tagId }
-
-    fun setViewMode(mode: RecipeViewMode) { _viewMode.value = mode }
-
-    fun deleteRecipe(id: String) {
-        viewModelScope.launch { repository.deleteRecipe(id) }
+    fun setSortMode(mode: RecipeSortMode) { 
+        _sortMode.value = mode 
+        _showCategoriesGrid.value = false
+    }
+    fun selectTag(tagId: String?) { _selectedTagId.value = tagId }
+    fun selectCategory(catId: String?) { 
+        _selectedCategoryId.value = catId 
+        if (catId != null) _showCategoriesGrid.value = false
+    }
+    fun setShowCategoriesGrid(show: Boolean) { 
+        _showCategoriesGrid.value = show 
+        if (show) {
+            _selectedCategoryId.value = null
+            _selectedTagId.value = null
+        }
     }
 
-    fun archiveRecipe(id: String) {
-        viewModelScope.launch { repository.archiveRecipe(id) }
-    }
-
-    fun copyRecipe(id: String) {
-        viewModelScope.launch { repository.copyRecipe(id) }
-    }
+    fun deleteRecipe(id: String) { viewModelScope.launch { repository.deleteRecipe(id) } }
+    fun archiveRecipe(id: String) { viewModelScope.launch { repository.archiveRecipe(id) } }
+    fun copyRecipe(id: String) { viewModelScope.launch { repository.copyRecipe(id) } }
 }

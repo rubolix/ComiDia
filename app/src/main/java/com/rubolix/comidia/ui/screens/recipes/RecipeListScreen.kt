@@ -2,9 +2,13 @@
 
 package com.rubolix.comidia.ui.screens.recipes
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -12,12 +16,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rubolix.comidia.data.local.entity.RecipeWithTagsAndCategories
-
-enum class RecipeViewMode { LATEST, BY_TAGS, BY_CATEGORIES }
 
 @Composable
 fun RecipeListScreen(
@@ -29,18 +34,85 @@ fun RecipeListScreen(
     val tags by viewModel.tags.collectAsState()
     val categories by viewModel.categories.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
-    val selectedTagFilter by viewModel.selectedTagFilter.collectAsState()
-    val viewMode by viewModel.viewMode.collectAsState()
+    val sortMode by viewModel.sortMode.collectAsState()
+    val showCategoriesGrid by viewModel.showCategoriesGrid.collectAsState()
+    val selectedTagId by viewModel.selectedTagId.collectAsState()
+    val selectedCategoryId by viewModel.selectedCategoryId.collectAsState()
+
+    var isSearchActive by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Recipes") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            if (isSearchActive) {
+                TopAppBar(
+                    title = {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = viewModel::onSearchQueryChange,
+                            placeholder = { Text("Search recipes...") },
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            singleLine = true,
+                            trailingIcon = {
+                                IconButton(onClick = { 
+                                    viewModel.onSearchQueryChange("")
+                                    isSearchActive = false 
+                                }) {
+                                    Icon(Icons.Default.Close, null)
+                                }
+                            }
+                        )
+                    }
                 )
-            )
+            } else {
+                TopAppBar(
+                    title = { Text("Recipes") },
+                    actions = {
+                        IconButton(onClick = { isSearchActive = true }) {
+                            Icon(Icons.Default.Search, "Search")
+                        }
+                        
+                        var showSortMenu by remember { mutableStateOf(false) }
+                        Box {
+                            IconButton(onClick = { showSortMenu = true }) {
+                                Icon(Icons.Default.Sort, "Sort")
+                            }
+                            DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
+                                RecipeSortMode.entries.forEach { mode ->
+                                    DropdownMenuItem(
+                                        text = { Text(mode.label) },
+                                        onClick = { 
+                                            viewModel.setSortMode(mode)
+                                            showSortMenu = false 
+                                        },
+                                        leadingIcon = { if (mode == sortMode) Icon(Icons.Default.Check, null) }
+                                    )
+                                }
+                            }
+                        }
+
+                        var showFilterMenu by remember { mutableStateOf(false) }
+                        Box {
+                            IconButton(onClick = { showFilterMenu = true }) {
+                                Icon(Icons.Default.FilterList, "Filter")
+                            }
+                            DropdownMenu(expanded = showFilterMenu, onDismissRequest = { showFilterMenu = false }) {
+                                DropdownMenuItem(
+                                    text = { Text("All Tags") },
+                                    onClick = { viewModel.selectTag(null); showFilterMenu = false },
+                                    leadingIcon = { if (selectedTagId == null) Icon(Icons.Default.Check, null) }
+                                )
+                                tags.forEach { tag ->
+                                    DropdownMenuItem(
+                                        text = { Text(tag.name) },
+                                        onClick = { viewModel.selectTag(tag.id); showFilterMenu = false },
+                                        leadingIcon = { if (selectedTagId == tag.id) Icon(Icons.Default.Check, null) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                )
+            }
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onNavigateToNewRecipe) {
@@ -48,109 +120,54 @@ fun RecipeListScreen(
             }
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            // Search bar
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = viewModel::onSearchQueryChange,
-                label = { Text("Search recipes...") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                singleLine = true
-            )
-
-            // View mode toggles
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            // Quick navigation row
             Row(
-                modifier = Modifier.padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 FilterChip(
-                    selected = viewMode == RecipeViewMode.LATEST,
-                    onClick = { viewModel.setViewMode(RecipeViewMode.LATEST) },
+                    selected = !showCategoriesGrid && sortMode == RecipeSortMode.LATEST,
+                    onClick = { viewModel.setSortMode(RecipeSortMode.LATEST) },
                     label = { Text("Latest") }
                 )
                 FilterChip(
-                    selected = viewMode == RecipeViewMode.BY_TAGS,
-                    onClick = { viewModel.setViewMode(RecipeViewMode.BY_TAGS) },
-                    label = { Text("By Tags") }
+                    selected = !showCategoriesGrid && sortMode == RecipeSortMode.TOP_HITS,
+                    onClick = { viewModel.setSortMode(RecipeSortMode.TOP_HITS) },
+                    label = { Text("Top Hits") }
                 )
-                FilterChip(
-                    selected = viewMode == RecipeViewMode.BY_CATEGORIES,
-                    onClick = { viewModel.setViewMode(RecipeViewMode.BY_CATEGORIES) },
-                    label = { Text("By Category") }
-                )
-            }
-
-            // Tag filter chips (when in BY_TAGS mode)
-            if (viewMode == RecipeViewMode.BY_TAGS && tags.isNotEmpty()) {
-                LazyRow(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(tags) { tag ->
-                        FilterChip(
-                            selected = selectedTagFilter == tag.id,
-                            onClick = {
-                                viewModel.onTagFilterChange(
-                                    if (selectedTagFilter == tag.id) null else tag.id
-                                )
-                            },
-                            label = { Text(tag.name) }
-                        )
-                    }
+                if (categories.isNotEmpty()) {
+                    FilterChip(
+                        selected = showCategoriesGrid,
+                        onClick = { viewModel.setShowCategoriesGrid(true) },
+                        label = { Text("Categories") }
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Recipe list
-            if (recipes.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+            if (showCategoriesGrid && categories.isNotEmpty()) {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    contentPadding = PaddingValues(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            "No recipes yet",
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "Tap + to add your first recipe",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    items(categories) { cat ->
+                        CategoryCard(name = cat.name, onClick = { viewModel.selectCategory(cat.id) })
                     }
                 }
             } else {
-                when (viewMode) {
-                    RecipeViewMode.BY_TAGS -> {
-                        val grouped = recipes.groupBy { r ->
-                            r.tags.firstOrNull()?.name ?: "Untagged"
-                        }.toSortedMap()
-                        GroupedRecipeList(grouped, onNavigateToRecipe, viewModel)
+                if (recipes.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("No recipes found", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    RecipeViewMode.BY_CATEGORIES -> {
-                        val grouped = recipes.groupBy { r ->
-                            r.categories.firstOrNull()?.name ?: "Uncategorized"
-                        }.toSortedMap()
-                        GroupedRecipeList(grouped, onNavigateToRecipe, viewModel)
-                    }
-                    RecipeViewMode.LATEST -> {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(recipes, key = { it.recipe.id }) { recipe ->
-                                RecipeCard(recipe, onNavigateToRecipe, viewModel)
-                            }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 80.dp)
+                    ) {
+                        items(recipes, key = { it.recipe.id }) { rwt ->
+                            RecipeListItem(rwt = rwt, onClick = { onNavigateToRecipe(rwt.recipe.id) })
                         }
                     }
                 }
@@ -160,105 +177,62 @@ fun RecipeListScreen(
 }
 
 @Composable
-private fun GroupedRecipeList(
-    grouped: Map<String, List<RecipeWithTagsAndCategories>>,
-    onNavigateToRecipe: (String) -> Unit,
-    viewModel: RecipeListViewModel
-) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        grouped.forEach { (group, recipesInGroup) ->
-            item {
-                Text(
-                    group,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-                )
-            }
-            items(recipesInGroup, key = { it.recipe.id }) { recipe ->
-                RecipeCard(recipe, onNavigateToRecipe, viewModel)
-            }
-        }
-    }
-}
-
-@Composable
-private fun RecipeCard(
-    recipeWithDetails: RecipeWithTagsAndCategories,
-    onNavigateToRecipe: (String) -> Unit,
-    viewModel: RecipeListViewModel
-) {
-    val recipe = recipeWithDetails.recipe
-    var showMenu by remember { mutableStateOf(false) }
-
+private fun CategoryCard(name: String, onClick: () -> Unit) {
     Card(
-        onClick = { onNavigateToRecipe(recipe.id) },
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth().height(100.dp).clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = recipe.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (recipeWithDetails.tags.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        recipeWithDetails.tags.take(3).forEach { tag ->
-                            AssistChip(
-                                onClick = {},
-                                label = { Text(tag.name, style = MaterialTheme.typography.labelSmall) },
-                                modifier = Modifier.height(24.dp)
-                            )
-                        }
-                    }
-                }
-                if (recipe.prepTimeMinutes > 0 || recipe.cookTimeMinutes > 0) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = buildString {
-                            if (recipe.prepTimeMinutes > 0) append("Prep: ${recipe.prepTimeMinutes}min")
-                            if (recipe.prepTimeMinutes > 0 && recipe.cookTimeMinutes > 0) append(" · ")
-                            if (recipe.cookTimeMinutes > 0) append("Cook: ${recipe.cookTimeMinutes}min")
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Box {
-                IconButton(onClick = { showMenu = true }) {
-                    Icon(Icons.Default.MoreVert, "Options")
-                }
-                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                    DropdownMenuItem(
-                        text = { Text("Copy") },
-                        onClick = { viewModel.copyRecipe(recipe.id); showMenu = false },
-                        leadingIcon = { Icon(Icons.Default.ContentCopy, null) }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Archive") },
-                        onClick = { viewModel.archiveRecipe(recipe.id); showMenu = false },
-                        leadingIcon = { Icon(Icons.Default.Archive, null) }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Delete") },
-                        onClick = { viewModel.deleteRecipe(recipe.id); showMenu = false },
-                        leadingIcon = { Icon(Icons.Default.Delete, null) }
-                    )
-                }
-            }
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(
+                text = name,
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(8.dp)
+            )
         }
     }
+}
+
+@Composable
+private fun RecipeListItem(rwt: RecipeWithTagsAndCategories, onClick: () -> Unit) {
+    ListItem(
+        modifier = Modifier.clickable { onClick() },
+        headlineContent = { 
+            Text(rwt.recipe.name, maxLines = 1, overflow = TextOverflow.Ellipsis) 
+        },
+        supportingContent = {
+            Column {
+                if (rwt.tags.isNotEmpty()) {
+                    Text(
+                        rwt.tags.joinToString(", ") { it.name },
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    repeat(5) { i ->
+                        Icon(
+                            if (i < rwt.recipe.rating.toInt()) Icons.Default.Star else Icons.Default.StarBorder,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    if (rwt.recipe.isKidApproved) {
+                        Spacer(Modifier.width(8.dp))
+                        Icon(
+                            Icons.Default.Face,
+                            null,
+                            modifier = Modifier.size(16.dp),
+                            tint = Color(0xFF4CAF50)
+                        )
+                    }
+                }
+            }
+        },
+        trailingContent = {
+            Icon(Icons.Default.ChevronRight, null)
+        }
+    )
 }

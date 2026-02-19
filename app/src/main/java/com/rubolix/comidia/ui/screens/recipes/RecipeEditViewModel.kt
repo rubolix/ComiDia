@@ -28,6 +28,7 @@ data class RecipeEditState(
     val cookTimeMinutes: String = "",
     val sourceUrl: String = "",
     val rating: Float = 0f,
+    val isKidApproved: Boolean = false,
     val notes: String = "",
     val ingredients: List<IngredientInput> = listOf(IngredientInput()),
     val selectedTagIds: Set<String> = emptySet(),
@@ -62,6 +63,7 @@ class RecipeEditViewModel @Inject constructor(
                         cookTimeMinutes = if (full.recipe.cookTimeMinutes > 0) full.recipe.cookTimeMinutes.toString() else "",
                         sourceUrl = full.recipe.sourceUrl ?: "",
                         rating = full.recipe.rating,
+                        isKidApproved = full.recipe.isKidApproved,
                         notes = full.recipe.notes,
                         ingredients = full.ingredients.map {
                             IngredientInput(it.id, it.name, it.quantity, it.unit, it.category)
@@ -81,6 +83,7 @@ class RecipeEditViewModel @Inject constructor(
     fun updateCookTime(time: String) { _state.update { it.copy(cookTimeMinutes = time) } }
     fun updateSourceUrl(url: String) { _state.update { it.copy(sourceUrl = url) } }
     fun updateRating(rating: Float) { _state.update { it.copy(rating = rating) } }
+    fun updateKidApproved(approved: Boolean) { _state.update { it.copy(isKidApproved = approved) } }
     fun updateNotes(notes: String) { _state.update { it.copy(notes = notes) } }
 
     fun updateIngredient(index: Int, ingredient: IngredientInput) {
@@ -134,6 +137,7 @@ class RecipeEditViewModel @Inject constructor(
                 cookTimeMinutes = s.cookTimeMinutes.toIntOrNull() ?: 0,
                 sourceUrl = s.sourceUrl.trim().ifBlank { null },
                 rating = s.rating,
+                isKidApproved = s.isKidApproved,
                 notes = s.notes.trim(),
                 updatedAt = System.currentTimeMillis()
             )

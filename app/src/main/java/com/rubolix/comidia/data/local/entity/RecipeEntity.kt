@@ -16,6 +16,7 @@ data class RecipeEntity(
     val imageUri: String? = null,
     val sourceUrl: String? = null,
     val rating: Float = 0f,
+    val isKidApproved: Boolean = false,
     val notes: String = "",
     val isArchived: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),

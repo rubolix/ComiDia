@@ -40,6 +40,7 @@ class RecipeEntityTest {
         assertNull(recipe.imageUri)
         assertNull(recipe.sourceUrl)
         assertEquals(0f, recipe.rating, 0.001f)
+        assertFalse(recipe.isKidApproved)
         assertEquals("", recipe.notes)
         assertFalse(recipe.isArchived)
         assertTrue(recipe.id.isNotBlank())

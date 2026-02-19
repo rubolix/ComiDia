@@ -22,6 +22,8 @@ sealed class Screen(val route: String) {
         fun createRoute(recipeId: String) = "recipes/$recipeId/edit"
     }
     data object Ingredients : Screen("ingredients")
+    data object ShoppingList : Screen("shopping_list")
+    data object Staples : Screen("staples")
     data object Settings : Screen("settings")
     data object SettingsCalendar : Screen("settings/calendar")
     data object SettingsBalance : Screen("settings/balance")
@@ -36,7 +38,6 @@ data class BottomNavItem(
 
 val bottomNavItems = listOf(
     BottomNavItem("Menu", Screen.Menu, Icons.Filled.RestaurantMenu, Icons.Outlined.RestaurantMenu),
-    BottomNavItem("Calendar", Screen.Calendar, Icons.Filled.CalendarMonth, Icons.Outlined.CalendarMonth),
     BottomNavItem("Recipes", Screen.RecipeList, Icons.Filled.Restaurant, Icons.Outlined.Restaurant),
     BottomNavItem("Ingredients", Screen.Ingredients, Icons.Filled.ShoppingCart, Icons.Outlined.ShoppingCart)
 )

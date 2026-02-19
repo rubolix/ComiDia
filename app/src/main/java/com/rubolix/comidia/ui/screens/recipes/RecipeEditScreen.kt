@@ -13,10 +13,12 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -126,18 +128,42 @@ fun RecipeEditScreen(
 
             // Star rating
             item {
-                Text("Rating", style = MaterialTheme.typography.titleSmall)
-                Spacer(modifier = Modifier.height(4.dp))
-                Row {
-                    repeat(5) { i ->
-                        IconButton(onClick = {
-                            viewModel.updateRating(if (state.rating == (i + 1).toFloat()) 0f else (i + 1).toFloat())
-                        }, modifier = Modifier.size(36.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("Rating", style = MaterialTheme.typography.titleSmall)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row {
+                            repeat(5) { i ->
+                                IconButton(onClick = {
+                                    viewModel.updateRating(if (state.rating == (i + 1).toFloat()) 0f else (i + 1).toFloat())
+                                }, modifier = Modifier.size(36.dp)) {
+                                    Icon(
+                                        if (i < state.rating.toInt()) Icons.Default.Star else Icons.Default.StarBorder,
+                                        contentDescription = "Rate ${i + 1}",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Kid Approved", style = MaterialTheme.typography.labelSmall)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        IconToggleButton(
+                            checked = state.isKidApproved,
+                            onCheckedChange = viewModel::updateKidApproved
+                        ) {
                             Icon(
-                                if (i < state.rating.toInt()) Icons.Default.Star else Icons.Default.StarBorder,
-                                contentDescription = "Rate ${i + 1}",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(28.dp)
+                                imageVector = if (state.isKidApproved) Icons.Default.Face else Icons.Default.Face,
+                                contentDescription = "Kid Approved",
+                                tint = if (state.isKidApproved) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                modifier = Modifier.size(32.dp)
                             )
                         }
                     }

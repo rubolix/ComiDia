@@ -2,6 +2,7 @@ package com.rubolix.comidia.ui.screens.mealplan
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rubolix.comidia.data.local.dao.MealPlanDao
 import com.rubolix.comidia.data.local.entity.*
 import com.rubolix.comidia.data.repository.GoalRepository
 import com.rubolix.comidia.data.repository.MealPlanRepository
@@ -65,6 +66,11 @@ class MenuViewModel @Inject constructor(
     val recipes: StateFlow<List<RecipeWithTags>> = recipeRepository.getAllRecipesWithTags()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val sourceLeftovers: StateFlow<List<MealPlanDao.RecipeWithUsage>> = _currentWeekStart.flatMapLatest { start ->
+        val end = start.plusDays(6)
+        mealPlanRepository.getSourceLeftoversForRange(start.format(dateFormatter), end.format(dateFormatter))
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val activeGoals: StateFlow<List<MealPlanGoalEntity>> = goalRepository.getActiveGoals()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -101,20 +107,45 @@ class MenuViewModel @Inject constructor(
     fun toggleMealTypeForDay(day: LocalDate, mealType: String) {
         _expandedMealTypes.update { current ->
             val dayTypes = current[day] ?: emptySet()
-            val updated = if (mealType in dayTypes) dayTypes - mealType else dayTypes + mealType
+            val toggleType = if (mealType == "dinner") "hidden_dinner" else mealType
+            val updated = if (toggleType in dayTypes) dayTypes - toggleType else dayTypes + toggleType
             current + (day to updated)
         }
     }
 
-    fun addRecipeToSlot(date: LocalDate, mealType: String, recipeId: String) {
+    fun addRecipeToSlot(date: LocalDate, mealType: String, recipeId: String, isLeftover: Boolean = false, generatesLeftovers: Boolean = false) {
         viewModelScope.launch {
-            mealPlanRepository.addRecipeToSlot(date.format(dateFormatter), mealType, recipeId)
+            mealPlanRepository.addRecipeToSlot(date.format(dateFormatter), mealType, recipeId, isLeftover, generatesLeftovers)
+        }
+    }
+
+    fun addCustomEntryToSlot(date: LocalDate, mealType: String, title: String, type: String, isLeftover: Boolean = false, generatesLeftovers: Boolean = false) {
+        viewModelScope.launch {
+            mealPlanRepository.addCustomEntryToSlot(date.format(dateFormatter), mealType, title, type, isLeftover, generatesLeftovers)
         }
     }
 
     fun removeRecipeFromSlot(date: LocalDate, mealType: String, recipeId: String) {
         viewModelScope.launch {
             mealPlanRepository.removeRecipeFromSlot(date.format(dateFormatter), mealType, recipeId)
+        }
+    }
+
+    fun removeCustomEntryFromSlot(entryId: String) {
+        viewModelScope.launch {
+            mealPlanRepository.removeCustomEntryFromSlot(entryId)
+        }
+    }
+
+    fun updateMealSlotRecipe(crossRef: MealSlotRecipeCrossRef) {
+        viewModelScope.launch {
+            mealPlanRepository.updateMealSlotRecipe(crossRef)
+        }
+    }
+
+    fun updateCustomEntry(entry: MealSlotCustomEntry) {
+        viewModelScope.launch {
+            mealPlanRepository.updateCustomEntry(entry)
         }
     }
 
@@ -151,5 +182,17 @@ class MenuViewModel @Inject constructor(
 
     fun toggleDailyTodo(todo: DailyTodoEntity) {
         viewModelScope.launch { mealPlanRepository.toggleDailyTodo(todo.id, !todo.isCompleted) }
+    }
+
+    fun updateRecipeKidApproved(recipeId: String, approved: Boolean) {
+        viewModelScope.launch {
+            val full = recipeRepository.getRecipeFull(recipeId).first() ?: return@launch
+            recipeRepository.saveRecipe(
+                full.recipe.copy(isKidApproved = approved),
+                full.ingredients,
+                full.tags.map { it.id },
+                full.categories.map { it.id }
+            )
+        }
     }
 }
