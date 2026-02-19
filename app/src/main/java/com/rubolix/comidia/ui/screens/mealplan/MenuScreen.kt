@@ -287,13 +287,12 @@ private fun DayCard(
                         otherMealTypes.forEach { type ->
                             val isShown = type in extraMealTypes
                             DropdownMenuItem(
-                                text = { Text("${if (isShown) "Hide" else "Show"} ${type.replaceFirstChar { it.uppercase() }}") },
+                                text = { Text(type.replaceFirstChar { it.uppercase() }) },
                                 onClick = { onToggleMealType(type); showDayMenu = false },
                                 leadingIcon = {
-                                    Icon(
-                                        if (isShown) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                        null
-                                    )
+                                    if (isShown) {
+                                        Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary)
+                                    }
                                 }
                             )
                         }

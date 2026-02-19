@@ -3,8 +3,10 @@ package com.rubolix.comidia.data.repository
 import com.rubolix.comidia.data.local.dao.GoalDao
 import com.rubolix.comidia.data.local.dao.MealPlanDao
 import com.rubolix.comidia.data.local.dao.RecipeDao
+import com.rubolix.comidia.data.local.dao.SettingsDao
 import com.rubolix.comidia.data.local.entity.*
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -105,4 +107,25 @@ class GoalRepository @Inject constructor(
     suspend fun deleteGoal(goal: MealPlanGoalEntity) = goalDao.deleteGoal(goal)
 
     suspend fun toggleGoal(id: String, active: Boolean) = goalDao.setGoalActive(id, active)
+}
+
+@Singleton
+class AppSettingsRepository @Inject constructor(
+    private val settingsDao: SettingsDao
+) {
+    fun getFirstDayOfWeek(): Flow<String> = settingsDao.getSetting(AppSettingsEntity.FIRST_DAY_OF_WEEK)
+        .map { it?.value ?: "monday" }
+
+    fun getDefaultMealTypes(): Flow<Set<String>> = settingsDao.getSetting(AppSettingsEntity.DEFAULT_MEAL_TYPES)
+        .map { setting ->
+            setting?.value?.split(",")?.toSet() ?: setOf("dinner")
+        }
+
+    suspend fun setFirstDayOfWeek(day: String) {
+        settingsDao.setSetting(AppSettingsEntity(AppSettingsEntity.FIRST_DAY_OF_WEEK, day))
+    }
+
+    suspend fun setDefaultMealTypes(types: Set<String>) {
+        settingsDao.setSetting(AppSettingsEntity(AppSettingsEntity.DEFAULT_MEAL_TYPES, types.joinToString(",")))
+    }
 }

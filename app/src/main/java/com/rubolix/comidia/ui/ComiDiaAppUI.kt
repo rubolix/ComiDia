@@ -109,7 +109,21 @@ fun ComiDiaAppUI() {
                 IngredientsScreen()
             }
             composable(Screen.Settings.route) {
-                SettingsScreen(onNavigateBack = { navController.popBackStack() })
+                SettingsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToCalendar = { navController.navigate(Screen.SettingsCalendar.route) },
+                    onNavigateToBalance = { navController.navigate(Screen.SettingsBalance.route) }
+                )
+            }
+            composable(Screen.SettingsCalendar.route) {
+                com.rubolix.comidia.ui.screens.settings.CalendarSettingsScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(Screen.SettingsBalance.route) {
+                com.rubolix.comidia.ui.screens.settings.WeeklyBalanceScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
         }
     }
