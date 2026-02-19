@@ -43,14 +43,53 @@ data class RecipeFull(
             entityColumn = "tagId"
         )
     )
-    val tags: List<TagEntity>
+    val tags: List<TagEntity>,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "id",
+        associateBy = Junction(
+            RecipeCategoryCrossRef::class,
+            parentColumn = "recipeId",
+            entityColumn = "categoryId"
+        )
+    )
+    val categories: List<RecipeCategoryEntity>
 )
 
-data class MealSlotWithRecipe(
+data class RecipeWithTagsAndCategories(
+    @Embedded val recipe: RecipeEntity,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "id",
+        associateBy = Junction(
+            RecipeTagCrossRef::class,
+            parentColumn = "recipeId",
+            entityColumn = "tagId"
+        )
+    )
+    val tags: List<TagEntity>,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "id",
+        associateBy = Junction(
+            RecipeCategoryCrossRef::class,
+            parentColumn = "recipeId",
+            entityColumn = "categoryId"
+        )
+    )
+    val categories: List<RecipeCategoryEntity>
+)
+
+data class MealSlotWithRecipes(
     @Embedded val mealSlot: MealSlotEntity,
     @Relation(
-        parentColumn = "recipeId",
-        entityColumn = "id"
+        parentColumn = "id",
+        entityColumn = "id",
+        associateBy = Junction(
+            MealSlotRecipeCrossRef::class,
+            parentColumn = "mealSlotId",
+            entityColumn = "recipeId"
+        )
     )
-    val recipe: RecipeEntity?
+    val recipes: List<RecipeEntity>
 )

@@ -7,8 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,19 +15,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.rubolix.comidia.data.local.entity.RecipeWithTags
+import com.rubolix.comidia.data.local.entity.RecipeWithTagsAndCategories
 
-@OptIn(ExperimentalMaterial3Api::class)
+enum class RecipeViewMode { LATEST, BY_TAGS, BY_CATEGORIES }
+
 @Composable
 fun RecipeListScreen(
     onNavigateToRecipe: (String) -> Unit,
     onNavigateToNewRecipe: () -> Unit,
+    onNavigateToSettings: () -> Unit,
     viewModel: RecipeListViewModel = hiltViewModel()
 ) {
     val recipes by viewModel.filteredRecipes.collectAsState()
     val tags by viewModel.tags.collectAsState()
+    val categories by viewModel.categories.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedTagFilter by viewModel.selectedTagFilter.collectAsState()
+    val viewMode by viewModel.viewMode.collectAsState()
 
     Scaffold(
         topBar = {
@@ -37,7 +40,12 @@ fun RecipeListScreen(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                ),
+                actions = {
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -62,10 +70,32 @@ fun RecipeListScreen(
                 singleLine = true
             )
 
-            // Tag filter chips
-            if (tags.isNotEmpty()) {
+            // View mode toggles
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = viewMode == RecipeViewMode.LATEST,
+                    onClick = { viewModel.setViewMode(RecipeViewMode.LATEST) },
+                    label = { Text("Latest") }
+                )
+                FilterChip(
+                    selected = viewMode == RecipeViewMode.BY_TAGS,
+                    onClick = { viewModel.setViewMode(RecipeViewMode.BY_TAGS) },
+                    label = { Text("By Tags") }
+                )
+                FilterChip(
+                    selected = viewMode == RecipeViewMode.BY_CATEGORIES,
+                    onClick = { viewModel.setViewMode(RecipeViewMode.BY_CATEGORIES) },
+                    label = { Text("By Category") }
+                )
+            }
+
+            // Tag filter chips (when in BY_TAGS mode)
+            if (viewMode == RecipeViewMode.BY_TAGS && tags.isNotEmpty()) {
                 LazyRow(
-                    modifier = Modifier.padding(horizontal = 16.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(tags) { tag ->
@@ -80,8 +110,9 @@ fun RecipeListScreen(
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Recipe list
             if (recipes.isEmpty()) {
@@ -104,17 +135,29 @@ fun RecipeListScreen(
                     }
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(recipes, key = { it.recipe.id }) { recipeWithTags ->
-                        RecipeCard(
-                            recipeWithTags = recipeWithTags,
-                            onClick = { onNavigateToRecipe(recipeWithTags.recipe.id) },
-                            onDelete = { viewModel.deleteRecipe(recipeWithTags.recipe.id) }
-                        )
+                when (viewMode) {
+                    RecipeViewMode.BY_TAGS -> {
+                        val grouped = recipes.groupBy { r ->
+                            r.tags.firstOrNull()?.name ?: "Untagged"
+                        }.toSortedMap()
+                        GroupedRecipeList(grouped, onNavigateToRecipe, viewModel)
+                    }
+                    RecipeViewMode.BY_CATEGORIES -> {
+                        val grouped = recipes.groupBy { r ->
+                            r.categories.firstOrNull()?.name ?: "Uncategorized"
+                        }.toSortedMap()
+                        GroupedRecipeList(grouped, onNavigateToRecipe, viewModel)
+                    }
+                    RecipeViewMode.LATEST -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(recipes, key = { it.recipe.id }) { recipe ->
+                                RecipeCard(recipe, onNavigateToRecipe, viewModel)
+                            }
+                        }
                     }
                 }
             }
@@ -123,14 +166,43 @@ fun RecipeListScreen(
 }
 
 @Composable
-private fun RecipeCard(
-    recipeWithTags: RecipeWithTags,
-    onClick: () -> Unit,
-    onDelete: () -> Unit
+private fun GroupedRecipeList(
+    grouped: Map<String, List<RecipeWithTagsAndCategories>>,
+    onNavigateToRecipe: (String) -> Unit,
+    viewModel: RecipeListViewModel
 ) {
-    val recipe = recipeWithTags.recipe
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        grouped.forEach { (group, recipesInGroup) ->
+            item {
+                Text(
+                    group,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                )
+            }
+            items(recipesInGroup, key = { it.recipe.id }) { recipe ->
+                RecipeCard(recipe, onNavigateToRecipe, viewModel)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecipeCard(
+    recipeWithDetails: RecipeWithTagsAndCategories,
+    onNavigateToRecipe: (String) -> Unit,
+    viewModel: RecipeListViewModel
+) {
+    val recipe = recipeWithDetails.recipe
+    var showMenu by remember { mutableStateOf(false) }
+
     Card(
-        onClick = onClick,
+        onClick = { onNavigateToRecipe(recipe.id) },
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -146,10 +218,10 @@ private fun RecipeCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (recipeWithTags.tags.isNotEmpty()) {
+                if (recipeWithDetails.tags.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        recipeWithTags.tags.take(3).forEach { tag ->
+                        recipeWithDetails.tags.take(3).forEach { tag ->
                             AssistChip(
                                 onClick = {},
                                 label = { Text(tag.name, style = MaterialTheme.typography.labelSmall) },
@@ -171,12 +243,27 @@ private fun RecipeCard(
                     )
                 }
             }
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "Delete",
-                    tint = MaterialTheme.colorScheme.error
-                )
+            Box {
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(Icons.Default.MoreVert, "Options")
+                }
+                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Copy") },
+                        onClick = { viewModel.copyRecipe(recipe.id); showMenu = false },
+                        leadingIcon = { Icon(Icons.Default.ContentCopy, null) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Archive") },
+                        onClick = { viewModel.archiveRecipe(recipe.id); showMenu = false },
+                        leadingIcon = { Icon(Icons.Default.Archive, null) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete") },
+                        onClick = { viewModel.deleteRecipe(recipe.id); showMenu = false },
+                        leadingIcon = { Icon(Icons.Default.Delete, null) }
+                    )
+                }
             }
         }
     }

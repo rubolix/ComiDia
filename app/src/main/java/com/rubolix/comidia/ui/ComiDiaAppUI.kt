@@ -1,6 +1,8 @@
 package com.rubolix.comidia.ui
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -14,7 +16,10 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.rubolix.comidia.ui.navigation.Screen
 import com.rubolix.comidia.ui.navigation.bottomNavItems
-import com.rubolix.comidia.ui.screens.mealplan.MealPlanScreen
+import com.rubolix.comidia.ui.screens.calendar.CalendarScreen
+import com.rubolix.comidia.ui.screens.ingredients.IngredientsScreen
+import com.rubolix.comidia.ui.screens.mealplan.MenuScreen
+import com.rubolix.comidia.ui.screens.recipes.RecipeDetailScreen
 import com.rubolix.comidia.ui.screens.recipes.RecipeEditScreen
 import com.rubolix.comidia.ui.screens.recipes.RecipeListScreen
 import com.rubolix.comidia.ui.screens.settings.SettingsScreen
@@ -25,8 +30,10 @@ fun ComiDiaAppUI() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
-    // Hide bottom bar on recipe edit screen
-    val showBottomBar = currentDestination?.route?.startsWith("recipes/") != true
+    val showBottomBar = currentDestination?.route?.let { route ->
+        !route.contains("/edit") && route != Screen.Settings.route &&
+            !(route.startsWith("recipes/") && route != Screen.RecipeList.route)
+    } ?: true
 
     Scaffold(
         bottomBar = {
@@ -60,16 +67,36 @@ fun ComiDiaAppUI() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.RecipeList.route,
+            startDestination = Screen.Menu.route,
             modifier = Modifier.padding(innerPadding)
         ) {
+            composable(Screen.Menu.route) {
+                MenuScreen(
+                    onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
+                )
+            }
+            composable(Screen.Calendar.route) {
+                CalendarScreen()
+            }
             composable(Screen.RecipeList.route) {
                 RecipeListScreen(
                     onNavigateToRecipe = { id ->
-                        navController.navigate(Screen.RecipeEdit.createRoute(id))
+                        navController.navigate(Screen.RecipeDetail.createRoute(id))
                     },
                     onNavigateToNewRecipe = {
                         navController.navigate(Screen.RecipeEdit.createRoute("new"))
+                    },
+                    onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
+                )
+            }
+            composable(
+                Screen.RecipeDetail.route,
+                arguments = listOf(navArgument("recipeId") { type = NavType.StringType })
+            ) {
+                RecipeDetailScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToEdit = { id ->
+                        navController.navigate(Screen.RecipeEdit.createRoute(id))
                     }
                 )
             }
@@ -79,11 +106,11 @@ fun ComiDiaAppUI() {
             ) {
                 RecipeEditScreen(onNavigateBack = { navController.popBackStack() })
             }
-            composable(Screen.MealPlan.route) {
-                MealPlanScreen()
+            composable(Screen.Ingredients.route) {
+                IngredientsScreen()
             }
             composable(Screen.Settings.route) {
-                SettingsScreen()
+                SettingsScreen(onNavigateBack = { navController.popBackStack() })
             }
         }
     }

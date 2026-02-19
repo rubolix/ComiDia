@@ -301,8 +301,8 @@ class SeedDatabaseCallback(
             val recipeId = uuid()
 
             db.execSQL(
-                """INSERT INTO recipes (id, name, instructions, servings, prepTimeMinutes, cookTimeMinutes, createdAt, updatedAt)
-                   VALUES ('$recipeId', '${recipe.name.esc()}', '${recipe.instructions.esc()}', ${recipe.servings}, ${recipe.prepMin}, ${recipe.cookMin}, $now, $now)"""
+                """INSERT INTO recipes (id, name, instructions, servings, prepTimeMinutes, cookTimeMinutes, isArchived, createdAt, updatedAt)
+                   VALUES ('$recipeId', '${recipe.name.esc()}', '${recipe.instructions.esc()}', ${recipe.servings}, ${recipe.prepMin}, ${recipe.cookMin}, 0, $now, $now)"""
             )
 
             for ((ingName, qty, unit) in recipe.ingredients) {

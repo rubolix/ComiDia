@@ -1,31 +1,69 @@
 package com.rubolix.comidia.data.local.dao
 
 import androidx.room.*
-import com.rubolix.comidia.data.local.entity.MealSlotEntity
-import com.rubolix.comidia.data.local.entity.MealSlotWithRecipe
+import com.rubolix.comidia.data.local.entity.*
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MealPlanDao {
     @Transaction
     @Query("SELECT * FROM meal_slots WHERE date BETWEEN :startDate AND :endDate ORDER BY date ASC, mealType ASC")
-    fun getMealSlotsForDateRange(startDate: String, endDate: String): Flow<List<MealSlotWithRecipe>>
+    fun getMealSlotsForDateRange(startDate: String, endDate: String): Flow<List<MealSlotWithRecipes>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMealSlot(mealSlot: MealSlotEntity)
-
-    @Update
-    suspend fun updateMealSlot(mealSlot: MealSlotEntity)
 
     @Delete
     suspend fun deleteMealSlot(mealSlot: MealSlotEntity)
 
     @Query("DELETE FROM meal_slots WHERE date = :date AND mealType = :mealType")
-    suspend fun deleteMealSlot(date: String, mealType: String)
+    suspend fun deleteMealSlotByDateAndType(date: String, mealType: String)
 
-    @Query("UPDATE meal_slots SET recipeId = :recipeId WHERE id = :slotId")
-    suspend fun assignRecipeToSlot(slotId: String, recipeId: String?)
+    @Query("SELECT * FROM meal_slots WHERE date = :date AND mealType = :mealType")
+    suspend fun getMealSlotByDateAndType(date: String, mealType: String): MealSlotEntity?
 
-    @Query("SELECT * FROM meal_slots WHERE date = :date")
-    fun getMealSlotsForDate(date: String): Flow<List<MealSlotWithRecipe>>
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMealSlotRecipe(crossRef: MealSlotRecipeCrossRef)
+
+    @Delete
+    suspend fun deleteMealSlotRecipe(crossRef: MealSlotRecipeCrossRef)
+
+    @Query("DELETE FROM meal_slot_recipes WHERE mealSlotId = :slotId")
+    suspend fun clearMealSlotRecipes(slotId: String)
+
+    @Transaction
+    suspend fun addRecipeToSlot(date: String, mealType: String, recipeId: String) {
+        var slot = getMealSlotByDateAndType(date, mealType)
+        if (slot == null) {
+            slot = MealSlotEntity(date = date, mealType = mealType)
+            insertMealSlot(slot)
+        }
+        val existing = getRecipeCountForSlot(slot.id)
+        insertMealSlotRecipe(MealSlotRecipeCrossRef(slot.id, recipeId, existing))
+    }
+
+    @Query("SELECT COUNT(*) FROM meal_slot_recipes WHERE mealSlotId = :slotId")
+    suspend fun getRecipeCountForSlot(slotId: String): Int
+
+    @Transaction
+    suspend fun removeRecipeFromSlot(date: String, mealType: String, recipeId: String) {
+        val slot = getMealSlotByDateAndType(date, mealType) ?: return
+        deleteMealSlotRecipe(MealSlotRecipeCrossRef(slot.id, recipeId))
+        if (getRecipeCountForSlot(slot.id) == 0) {
+            deleteMealSlot(slot)
+        }
+    }
+
+    // Weekly items
+    @Query("SELECT * FROM weekly_items WHERE weekStartDate = :weekStart ORDER BY id ASC")
+    fun getWeeklyItems(weekStart: String): Flow<List<WeeklyItemEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertWeeklyItem(item: WeeklyItemEntity)
+
+    @Delete
+    suspend fun deleteWeeklyItem(item: WeeklyItemEntity)
+
+    @Query("UPDATE weekly_items SET isCompleted = :completed WHERE id = :id")
+    suspend fun setWeeklyItemCompleted(id: String, completed: Boolean)
 }

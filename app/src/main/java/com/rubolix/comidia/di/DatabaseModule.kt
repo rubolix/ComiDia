@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.rubolix.comidia.data.local.ComiDiaDatabase
 import com.rubolix.comidia.data.local.SeedDatabaseCallback
+import com.rubolix.comidia.data.local.dao.GoalDao
 import com.rubolix.comidia.data.local.dao.MealPlanDao
 import com.rubolix.comidia.data.local.dao.RecipeDao
 import dagger.Module
@@ -26,6 +27,7 @@ object DatabaseModule {
             "comidia.db"
         )
             .addCallback(SeedDatabaseCallback(context))
+            .fallbackToDestructiveMigration()
             .build()
     }
 
@@ -34,4 +36,7 @@ object DatabaseModule {
 
     @Provides
     fun provideMealPlanDao(db: ComiDiaDatabase): MealPlanDao = db.mealPlanDao()
+
+    @Provides
+    fun provideGoalDao(db: ComiDiaDatabase): GoalDao = db.goalDao()
 }

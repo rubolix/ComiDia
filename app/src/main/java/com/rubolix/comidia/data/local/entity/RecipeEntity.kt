@@ -13,6 +13,7 @@ data class RecipeEntity(
     val servings: Int = 4,
     val prepTimeMinutes: Int = 0,
     val cookTimeMinutes: Int = 0,
+    val isArchived: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )
