@@ -83,6 +83,10 @@ class MenuViewModel @Inject constructor(
                 }
             }
             val isMet = when (goal.goalType) {
+                "gte" -> count >= goal.targetCount
+                "lte" -> count <= goal.targetCount
+                "eq" -> count == goal.targetCount
+                // Legacy support
                 "min" -> count >= goal.targetCount
                 "max" -> count <= goal.targetCount
                 else -> true

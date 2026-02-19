@@ -5,6 +5,10 @@ package com.rubolix.comidia.ui.screens.ingredients
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -12,72 +16,129 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.rubolix.comidia.data.local.entity.IngredientEntity
+
+enum class IngredientSortMode(val label: String) {
+    BY_DAY("By Day"),
+    ALPHABETICAL("A-Z"),
+    BY_CATEGORY("By Type")
+}
 
 @Composable
 fun IngredientsScreen(
     viewModel: IngredientsViewModel = hiltViewModel()
 ) {
-    val ingredientsByCategory by viewModel.ingredientsByCategory.collectAsState()
+    val weekStart by viewModel.currentWeekStart.collectAsState()
+    val groupedIngredients by viewModel.groupedIngredients.collectAsState()
+    val sortMode by viewModel.sortMode.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Ingredients") },
+                title = { Text("Shopping List") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                ),
+                actions = {
+                    var showSortMenu by remember { mutableStateOf(false) }
+                    Box {
+                        IconButton(onClick = { showSortMenu = true }) {
+                            Icon(Icons.Default.Sort, "Sort")
+                        }
+                        DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
+                            IngredientSortMode.values().forEach { mode ->
+                                DropdownMenuItem(
+                                    text = { Text(mode.label) },
+                                    onClick = { viewModel.setSortMode(mode); showSortMenu = false },
+                                    leadingIcon = {
+                                        if (mode == sortMode) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
             )
         }
     ) { padding ->
-        if (ingredientsByCategory.isEmpty()) {
-            Box(
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // Week navigation
+            Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                IconButton(onClick = viewModel::previousWeek) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Previous week")
+                }
                 Text(
-                    "Ingredients will appear here\nas you add recipes",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = "${weekStart.format(java.time.format.DateTimeFormatter.ofPattern("MMM d"))} — ${
+                        weekStart.plusDays(6).format(java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy"))
+                    }",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
                 )
+                IconButton(onClick = viewModel::nextWeek) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Next week")
+                }
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                ingredientsByCategory.forEach { (category, ingredients) ->
-                    item {
-                        Text(
-                            category.ifBlank { "Other" },
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
-                    items(ingredients) { ingredient ->
-                        Card(modifier = Modifier.fillMaxWidth()) {
+
+            if (groupedIngredients.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "No meals planned for this week.\nAdd recipes to your menu to see ingredients here.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    groupedIngredients.forEach { (groupName, ingredients) ->
+                        item {
+                            Text(
+                                groupName,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
+                            )
+                        }
+                        items(ingredients) { item ->
                             Row(
-                                modifier = Modifier.padding(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 2.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                Text("• ", style = MaterialTheme.typography.bodyMedium)
                                 Text(
-                                    ingredient.name,
+                                    buildString {
+                                        if (item.quantity.isNotBlank()) append("${item.quantity} ")
+                                        if (item.unit.isNotBlank()) append("${item.unit} ")
+                                        append(item.name)
+                                    },
                                     style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier.weight(1f)
                                 )
-                                Text(
-                                    "${ingredient.recipeCount} recipe${if (ingredient.recipeCount != 1) "s" else ""}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                if (item.recipeNames.size > 1) {
+                                    Text(
+                                        "(${item.recipeNames.size} recipes)",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }

@@ -2,6 +2,7 @@
 
 package com.rubolix.comidia.ui.screens.settings
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -53,7 +54,7 @@ fun WeeklyBalanceScreen(
                     Text("No balance goals yet", style = MaterialTheme.typography.bodyLarge)
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Add goals like \"at least 1 fish meal\" or \"max 2 pasta dishes\"",
+                        "Add goals like \"exactly 1 fish meal\" or \"at least 3 veggie sides\"",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -115,12 +116,21 @@ private fun GoalCard(
             )
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                val desc = buildString {
-                    if (goal.goalType == "min") append("At least ${goal.targetCount}")
-                    else append("At most ${goal.targetCount}")
-                    append(" ${goal.description} meal(s)/week")
+                val compLabel = when (goal.goalType) {
+                    "eq" -> "Exactly"
+                    "gte", "min" -> "At least"
+                    "lte", "max" -> "At most"
+                    else -> ""
                 }
-                Text(desc, style = MaterialTheme.typography.bodyMedium)
+                val periodLabel = when (goal.period) {
+                    "day" -> "per day"
+                    "month" -> "per month"
+                    else -> "per week"
+                }
+                Text(
+                    "$compLabel ${goal.targetCount} ${goal.description} $periodLabel",
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
@@ -136,8 +146,10 @@ private fun AddGoalDialog(
     onAdd: (MealPlanGoalEntity) -> Unit
 ) {
     var selectedTag by remember { mutableStateOf(tags.firstOrNull() ?: "") }
-    var goalType by remember { mutableStateOf("min") }
+    var goalType by remember { mutableStateOf("eq") }
     var targetText by remember { mutableStateOf("1") }
+    var period by remember { mutableStateOf("week") }
+    var showAdvanced by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -171,26 +183,49 @@ private fun AddGoalDialog(
                     }
                 }
 
-                // Goal type
-                Text("Goal type", style = MaterialTheme.typography.labelMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    listOf("min" to "At least", "max" to "At most").forEach { (type, label) ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            RadioButton(
-                                selected = goalType == type,
-                                onClick = { goalType = type }
-                            )
-                            Text(label)
-                        }
+                // Comparison type
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("eq" to "Equal to", "gte" to "At least", "lte" to "At most").forEach { (type, label) ->
+                        FilterChip(
+                            selected = goalType == type,
+                            onClick = { goalType = type },
+                            label = { Text(label, style = MaterialTheme.typography.labelSmall) }
+                        )
                     }
                 }
 
                 OutlinedTextField(
                     value = targetText,
                     onValueChange = { targetText = it.filter { c -> c.isDigit() } },
-                    label = { Text("Count per week") },
+                    label = { Text("Count") },
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // Advanced options toggle
+                TextButton(onClick = { showAdvanced = !showAdvanced }) {
+                    Icon(
+                        if (showAdvanced) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text("Advanced options")
+                }
+
+                AnimatedVisibility(visible = showAdvanced) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Period", style = MaterialTheme.typography.labelMedium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf("day" to "Per day", "week" to "Per week", "month" to "Per month").forEach { (p, label) ->
+                                FilterChip(
+                                    selected = period == p,
+                                    onClick = { period = p },
+                                    label = { Text(label, style = MaterialTheme.typography.labelSmall) }
+                                )
+                            }
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
@@ -205,6 +240,7 @@ private fun AddGoalDialog(
                                 tagId = selectedTag,
                                 goalType = goalType,
                                 targetCount = target,
+                                period = period,
                                 isActive = true
                             )
                         )

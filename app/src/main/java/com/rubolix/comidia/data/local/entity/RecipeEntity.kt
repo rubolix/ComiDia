@@ -13,7 +13,13 @@ data class RecipeEntity(
     val servings: Int = 4,
     val prepTimeMinutes: Int = 0,
     val cookTimeMinutes: Int = 0,
+    val imageUri: String? = null,
+    val sourceUrl: String? = null,
+    val rating: Float = 0f,
+    val notes: String = "",
     val isArchived: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
-)
+) {
+    val totalTimeMinutes: Int get() = prepTimeMinutes + cookTimeMinutes
+}

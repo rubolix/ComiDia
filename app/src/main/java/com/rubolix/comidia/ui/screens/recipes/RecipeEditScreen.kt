@@ -11,6 +11,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -122,6 +124,37 @@ fun RecipeEditScreen(
                 }
             }
 
+            // Star rating
+            item {
+                Text("Rating", style = MaterialTheme.typography.titleSmall)
+                Spacer(modifier = Modifier.height(4.dp))
+                Row {
+                    repeat(5) { i ->
+                        IconButton(onClick = {
+                            viewModel.updateRating(if (state.rating == (i + 1).toFloat()) 0f else (i + 1).toFloat())
+                        }, modifier = Modifier.size(36.dp)) {
+                            Icon(
+                                if (i < state.rating.toInt()) Icons.Default.Star else Icons.Default.StarBorder,
+                                contentDescription = "Rate ${i + 1}",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Source URL
+            item {
+                OutlinedTextField(
+                    value = state.sourceUrl,
+                    onValueChange = viewModel::updateSourceUrl,
+                    label = { Text("Source URL (optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
+
             // Ingredients section
             item {
                 Row(
@@ -157,6 +190,19 @@ fun RecipeEditScreen(
                         .fillMaxWidth()
                         .heightIn(min = 150.dp),
                     maxLines = 10
+                )
+            }
+
+            // Notes
+            item {
+                OutlinedTextField(
+                    value = state.notes,
+                    onValueChange = viewModel::updateNotes,
+                    label = { Text("Notes (optional)") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 80.dp),
+                    maxLines = 5
                 )
             }
         }

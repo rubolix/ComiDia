@@ -2,6 +2,9 @@
 
 package com.rubolix.comidia.ui.screens.recipes
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -14,7 +17,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rubolix.comidia.data.local.entity.RecipeFull
@@ -29,6 +34,8 @@ fun RecipeDetailScreen(
     var showMenu by remember { mutableStateOf(false) }
 
     recipeFull?.let { full ->
+        val context = LocalContext.current
+
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -87,8 +94,35 @@ fun RecipeDetailScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // Star rating
+                if (full.recipe.rating > 0f) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        repeat(5) { i ->
+                            Icon(
+                                if (i < full.recipe.rating.toInt()) Icons.Default.Star
+                                else if (i.toFloat() < full.recipe.rating) Icons.Default.Star // half star approximation
+                                else Icons.Default.StarBorder,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        if (full.recipe.rating > 0f) {
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                String.format("%.1f", full.recipe.rating),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
                 // Times & servings
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    if (full.recipe.totalTimeMinutes > 0) {
+                        InfoChip("Total: ${full.recipe.totalTimeMinutes} min")
+                    }
                     if (full.recipe.prepTimeMinutes > 0) {
                         InfoChip("Prep: ${full.recipe.prepTimeMinutes} min")
                     }
@@ -96,6 +130,25 @@ fun RecipeDetailScreen(
                         InfoChip("Cook: ${full.recipe.cookTimeMinutes} min")
                     }
                     InfoChip("Serves ${full.recipe.servings}")
+                }
+
+                // Source URL
+                if (!full.recipe.sourceUrl.isNullOrBlank()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(full.recipe.sourceUrl)))
+                        }
+                    ) {
+                        Icon(Icons.Default.Link, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "View source recipe",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            textDecoration = TextDecoration.Underline
+                        )
+                    }
                 }
 
                 // Tags
@@ -147,6 +200,23 @@ fun RecipeDetailScreen(
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             full.recipe.instructions,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                }
+
+                // Notes
+                if (full.recipe.notes.isNotBlank()) {
+                    Text("Notes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)
+                        )
+                    ) {
+                        Text(
+                            full.recipe.notes,
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(12.dp)
                         )

@@ -22,9 +22,19 @@ interface RecipeDao {
     @Query("SELECT * FROM recipes WHERE isArchived = 1 ORDER BY name ASC")
     fun getArchivedRecipes(): Flow<List<RecipeWithTags>>
 
+    @Query("SELECT * FROM ingredients WHERE recipeId IN (:recipeIds)")
+    suspend fun getIngredientsByRecipeIds(recipeIds: List<String>): List<IngredientEntity>
+
+    @Query("SELECT * FROM recipes WHERE id IN (:ids)")
+    suspend fun getRecipesByIds(ids: List<String>): List<RecipeEntity>
+
     @Transaction
     @Query("SELECT * FROM recipes WHERE id = :id")
     fun getRecipeFull(id: String): Flow<RecipeFull?>
+
+    @Transaction
+    @Query("SELECT * FROM recipes WHERE id = :id")
+    suspend fun getRecipeFullSync(id: String): RecipeFull?
 
     @Query("SELECT * FROM recipes WHERE id = :id")
     suspend fun getRecipeById(id: String): RecipeEntity?

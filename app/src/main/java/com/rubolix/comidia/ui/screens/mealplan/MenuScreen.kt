@@ -105,8 +105,12 @@ fun MenuScreen(
                 }
             }
 
-            // Whole Week card: goals + weekly items only
+            // Whole Week card: compact goal icon + weekly items
             item {
+                var showGoalDetails by remember { mutableStateOf(false) }
+                val allGoalsMet = goalStatuses.isNotEmpty() && goalStatuses.all { it.isMet }
+                val hasUnmetGoals = goalStatuses.any { !it.isMet }
+
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Row(
@@ -114,33 +118,56 @@ fun MenuScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Whole Week", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Whole Week", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                if (goalStatuses.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    IconButton(
+                                        onClick = { showGoalDetails = !showGoalDetails },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            if (allGoalsMet) Icons.Default.CheckCircle else Icons.Default.Warning,
+                                            contentDescription = if (allGoalsMet) "All goals met" else "Some goals unmet",
+                                            tint = if (allGoalsMet) MaterialTheme.colorScheme.primary
+                                                   else MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
                             IconButton(onClick = { showAddWeeklyItem = true }, modifier = Modifier.size(24.dp)) {
                                 Icon(Icons.Default.Add, "Add weekly item", modifier = Modifier.size(18.dp))
                             }
                         }
 
-                        // Goal indicators
-                        if (goalStatuses.isNotEmpty()) {
+                        // Expandable goal details
+                        if (showGoalDetails && goalStatuses.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(8.dp))
                             goalStatuses.forEach { status ->
+                                val compLabel = when (status.goal.goalType) {
+                                    "eq" -> "Exactly"
+                                    "gte", "min" -> "At least"
+                                    "lte", "max" -> "At most"
+                                    else -> ""
+                                }
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.padding(vertical = 2.dp)
                                 ) {
                                     Icon(
-                                        if (status.isMet) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                                        if (status.isMet) Icons.Default.CheckCircle else Icons.Default.Cancel,
                                         contentDescription = null,
                                         tint = if (status.isMet) MaterialTheme.colorScheme.primary
-                                               else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                        modifier = Modifier.size(18.dp)
+                                               else MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                                        modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        "${status.goal.description} (${status.currentCount}/${status.goal.targetCount})",
+                                        "$compLabel ${status.goal.targetCount} ${status.goal.description} (${status.currentCount}/${status.goal.targetCount})",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = if (status.isMet) MaterialTheme.colorScheme.onSurface
-                                                else MaterialTheme.colorScheme.onSurfaceVariant
+                                                else MaterialTheme.colorScheme.error
                                     )
                                 }
                             }

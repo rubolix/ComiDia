@@ -26,6 +26,9 @@ data class RecipeEditState(
     val servings: String = "4",
     val prepTimeMinutes: String = "",
     val cookTimeMinutes: String = "",
+    val sourceUrl: String = "",
+    val rating: Float = 0f,
+    val notes: String = "",
     val ingredients: List<IngredientInput> = listOf(IngredientInput()),
     val selectedTagIds: Set<String> = emptySet(),
     val isNew: Boolean = true,
@@ -57,6 +60,9 @@ class RecipeEditViewModel @Inject constructor(
                         servings = full.recipe.servings.toString(),
                         prepTimeMinutes = if (full.recipe.prepTimeMinutes > 0) full.recipe.prepTimeMinutes.toString() else "",
                         cookTimeMinutes = if (full.recipe.cookTimeMinutes > 0) full.recipe.cookTimeMinutes.toString() else "",
+                        sourceUrl = full.recipe.sourceUrl ?: "",
+                        rating = full.recipe.rating,
+                        notes = full.recipe.notes,
                         ingredients = full.ingredients.map {
                             IngredientInput(it.id, it.name, it.quantity, it.unit, it.category)
                         }.ifEmpty { listOf(IngredientInput()) },
@@ -73,6 +79,9 @@ class RecipeEditViewModel @Inject constructor(
     fun updateServings(servings: String) { _state.update { it.copy(servings = servings) } }
     fun updatePrepTime(time: String) { _state.update { it.copy(prepTimeMinutes = time) } }
     fun updateCookTime(time: String) { _state.update { it.copy(cookTimeMinutes = time) } }
+    fun updateSourceUrl(url: String) { _state.update { it.copy(sourceUrl = url) } }
+    fun updateRating(rating: Float) { _state.update { it.copy(rating = rating) } }
+    fun updateNotes(notes: String) { _state.update { it.copy(notes = notes) } }
 
     fun updateIngredient(index: Int, ingredient: IngredientInput) {
         _state.update { state ->
@@ -123,6 +132,9 @@ class RecipeEditViewModel @Inject constructor(
                 servings = s.servings.toIntOrNull() ?: 4,
                 prepTimeMinutes = s.prepTimeMinutes.toIntOrNull() ?: 0,
                 cookTimeMinutes = s.cookTimeMinutes.toIntOrNull() ?: 0,
+                sourceUrl = s.sourceUrl.trim().ifBlank { null },
+                rating = s.rating,
+                notes = s.notes.trim(),
                 updatedAt = System.currentTimeMillis()
             )
             val ingredients = s.ingredients

@@ -44,14 +44,24 @@ class SeedDatabaseCallback(
             db.execSQL("INSERT INTO tags (id, name, color) VALUES ('$id', '$name', ${0xFF6750A4})")
         }
 
+        data class IngredientData(
+            val name: String,
+            val qty: String,
+            val unit: String,
+            val category: String = ""
+        )
+
         data class Recipe(
             val name: String,
             val instructions: String,
             val servings: Int,
             val prepMin: Int,
             val cookMin: Int,
-            val ingredients: List<Triple<String, String, String>>, // name, qty, unit
-            val tagIds: List<String>
+            val ingredients: List<IngredientData>,
+            val tagIds: List<String>,
+            val sourceUrl: String = "",
+            val rating: Float = 0f,
+            val notes: String = ""
         )
 
         val recipes = listOf(
@@ -61,153 +71,229 @@ class SeedDatabaseCallback(
                 "1. Season chicken thighs with salt and pepper.\n2. Sear in a hot skillet until golden, about 4 min per side.\n3. Mix honey, soy sauce, garlic, and ginger. Pour over chicken.\n4. Bake at 400°F for 25 minutes until internal temp reaches 165°F.\n5. Garnish with sesame seeds and green onions.",
                 5, 10, 25,
                 listOf(
-                    Triple("chicken thighs", "10", "pieces"), Triple("honey", "1/3", "cup"),
-                    Triple("soy sauce", "1/4", "cup"), Triple("garlic cloves, minced", "4", ""),
-                    Triple("fresh ginger, grated", "1", "tbsp"), Triple("sesame seeds", "1", "tbsp"),
-                    Triple("green onions, sliced", "3", ""), Triple("olive oil", "2", "tbsp")
+                    IngredientData("chicken thighs", "10", "pieces", "Protein"),
+                    IngredientData("honey", "1/3", "cup", "Pantry"),
+                    IngredientData("soy sauce", "1/4", "cup", "Pantry"),
+                    IngredientData("garlic cloves, minced", "4", "", "Produce"),
+                    IngredientData("fresh ginger, grated", "1", "tbsp", "Produce"),
+                    IngredientData("sesame seeds", "1", "tbsp", "Pantry"),
+                    IngredientData("green onions, sliced", "3", "", "Produce"),
+                    IngredientData("olive oil", "2", "tbsp", "Pantry")
                 ),
-                listOf(tagChicken, tagMain, tagAsian)
+                listOf(tagChicken, tagMain, tagAsian),
+                rating = 4.5f,
+                notes = "Family favorite. Can substitute drumsticks."
             ),
             Recipe(
                 "One-Pot Beef Chili",
                 "1. Brown ground beef in a large pot over medium-high heat.\n2. Add diced onion, bell pepper, and garlic. Cook 5 minutes.\n3. Stir in crushed tomatoes, beans, chili powder, cumin, and paprika.\n4. Simmer for 30 minutes, stirring occasionally.\n5. Serve with shredded cheese and sour cream.",
                 5, 15, 35,
                 listOf(
-                    Triple("ground beef", "2", "lbs"), Triple("kidney beans, drained", "2", "cans"),
-                    Triple("crushed tomatoes", "28", "oz"), Triple("yellow onion, diced", "1", ""),
-                    Triple("bell pepper, diced", "1", ""), Triple("garlic cloves, minced", "3", ""),
-                    Triple("chili powder", "2", "tbsp"), Triple("cumin", "1", "tbsp"),
-                    Triple("paprika", "1", "tsp"), Triple("shredded cheddar", "1", "cup"),
-                    Triple("sour cream", "1/2", "cup")
+                    IngredientData("ground beef", "2", "lbs", "Protein"),
+                    IngredientData("kidney beans, drained", "2", "cans", "Canned"),
+                    IngredientData("crushed tomatoes", "28", "oz", "Canned"),
+                    IngredientData("yellow onion, diced", "1", "", "Produce"),
+                    IngredientData("bell pepper, diced", "1", "", "Produce"),
+                    IngredientData("garlic cloves, minced", "3", "", "Produce"),
+                    IngredientData("chili powder", "2", "tbsp", "Spices"),
+                    IngredientData("cumin", "1", "tbsp", "Spices"),
+                    IngredientData("paprika", "1", "tsp", "Spices"),
+                    IngredientData("shredded cheddar", "1", "cup", "Dairy"),
+                    IngredientData("sour cream", "1/2", "cup", "Dairy")
                 ),
-                listOf(tagMeat, tagMain, tagComfort, tagMexican)
+                listOf(tagMeat, tagMain, tagComfort, tagMexican),
+                rating = 4f,
+                notes = "Freezes well. Great for batch cooking."
             ),
             Recipe(
                 "Lemon Herb Baked Salmon",
                 "1. Preheat oven to 375°F.\n2. Place salmon fillets on a lined baking sheet.\n3. Drizzle with olive oil, lemon juice, and season with dill, salt, and pepper.\n4. Bake for 15-18 minutes until fish flakes easily.\n5. Serve with lemon wedges.",
                 5, 10, 18,
                 listOf(
-                    Triple("salmon fillets", "5", "pieces"), Triple("lemon, juiced", "2", ""),
-                    Triple("fresh dill, chopped", "2", "tbsp"), Triple("olive oil", "3", "tbsp"),
-                    Triple("garlic powder", "1", "tsp"), Triple("salt", "1", "tsp"),
-                    Triple("black pepper", "1/2", "tsp")
+                    IngredientData("salmon fillets", "5", "pieces", "Protein"),
+                    IngredientData("lemon, juiced", "2", "", "Produce"),
+                    IngredientData("fresh dill, chopped", "2", "tbsp", "Produce"),
+                    IngredientData("olive oil", "3", "tbsp", "Pantry"),
+                    IngredientData("garlic powder", "1", "tsp", "Spices"),
+                    IngredientData("salt", "1", "tsp", "Spices"),
+                    IngredientData("black pepper", "1/2", "tsp", "Spices")
                 ),
-                listOf(tagFish, tagMain, tagQuick)
+                listOf(tagFish, tagMain, tagQuick),
+                rating = 4.5f,
+                notes = "Quick weeknight dinner. Kids prefer it with teriyaki glaze."
             ),
             Recipe(
                 "Black Bean & Sweet Potato Tacos",
                 "1. Dice sweet potatoes and roast at 400°F for 20 minutes.\n2. Heat black beans with cumin, chili powder, and lime juice.\n3. Warm tortillas.\n4. Assemble tacos with sweet potato, beans, avocado, and cilantro.\n5. Top with pickled onion and crumbled queso fresco.",
                 5, 15, 20,
                 listOf(
-                    Triple("sweet potatoes, diced", "3", ""), Triple("black beans, drained", "2", "cans"),
-                    Triple("corn tortillas", "15", ""), Triple("avocado, sliced", "2", ""),
-                    Triple("cilantro, chopped", "1/2", "cup"), Triple("lime", "2", ""),
-                    Triple("cumin", "1", "tsp"), Triple("chili powder", "1", "tsp"),
-                    Triple("queso fresco", "1/2", "cup")
+                    IngredientData("sweet potatoes, diced", "3", "", "Produce"),
+                    IngredientData("black beans, drained", "2", "cans", "Canned"),
+                    IngredientData("corn tortillas", "15", "", "Bakery"),
+                    IngredientData("avocado, sliced", "2", "", "Produce"),
+                    IngredientData("cilantro, chopped", "1/2", "cup", "Produce"),
+                    IngredientData("lime", "2", "", "Produce"),
+                    IngredientData("cumin", "1", "tsp", "Spices"),
+                    IngredientData("chili powder", "1", "tsp", "Spices"),
+                    IngredientData("queso fresco", "1/2", "cup", "Dairy")
                 ),
-                listOf(tagVegetarian, tagMain, tagMexican)
+                listOf(tagVegetarian, tagMain, tagMexican),
+                rating = 4f,
+                notes = "Meatless Monday staple."
             ),
             Recipe(
                 "Sheet Pan Italian Sausage & Veggies",
                 "1. Preheat oven to 425°F.\n2. Slice sausages, bell peppers, zucchini, and red onion.\n3. Toss everything with olive oil, Italian seasoning, salt, and pepper.\n4. Spread on a sheet pan in a single layer.\n5. Roast for 25-30 minutes, tossing halfway through.",
                 5, 10, 30,
                 listOf(
-                    Triple("Italian sausage links", "5", ""), Triple("bell peppers, sliced", "3", ""),
-                    Triple("zucchini, sliced", "2", ""), Triple("red onion, wedged", "1", ""),
-                    Triple("olive oil", "3", "tbsp"), Triple("Italian seasoning", "1", "tbsp"),
-                    Triple("garlic powder", "1", "tsp")
+                    IngredientData("Italian sausage links", "5", "", "Protein"),
+                    IngredientData("bell peppers, sliced", "3", "", "Produce"),
+                    IngredientData("zucchini, sliced", "2", "", "Produce"),
+                    IngredientData("red onion, wedged", "1", "", "Produce"),
+                    IngredientData("olive oil", "3", "tbsp", "Pantry"),
+                    IngredientData("Italian seasoning", "1", "tbsp", "Spices"),
+                    IngredientData("garlic powder", "1", "tsp", "Spices")
                 ),
-                listOf(tagMeat, tagMain, tagItalian, tagQuick)
+                listOf(tagMeat, tagMain, tagItalian, tagQuick),
+                rating = 3.5f,
+                notes = "Easy cleanup. Use hot or mild sausage."
             ),
             Recipe(
                 "Vegetable Stir-Fry with Tofu",
                 "1. Press and cube tofu. Pan-fry until golden on all sides.\n2. Stir-fry broccoli, snap peas, carrots, and bell pepper in sesame oil.\n3. Mix soy sauce, rice vinegar, ginger, garlic, and cornstarch for sauce.\n4. Add sauce and tofu to vegetables. Toss until coated.\n5. Serve over steamed rice.",
                 5, 15, 15,
                 listOf(
-                    Triple("firm tofu", "2", "blocks"), Triple("broccoli florets", "3", "cups"),
-                    Triple("snap peas", "2", "cups"), Triple("carrots, julienned", "2", ""),
-                    Triple("bell pepper, sliced", "1", ""), Triple("soy sauce", "1/4", "cup"),
-                    Triple("rice vinegar", "2", "tbsp"), Triple("sesame oil", "2", "tbsp"),
-                    Triple("cornstarch", "1", "tbsp"), Triple("fresh ginger", "1", "tbsp"),
-                    Triple("garlic cloves", "3", ""), Triple("jasmine rice", "2", "cups")
+                    IngredientData("firm tofu", "2", "blocks", "Protein"),
+                    IngredientData("broccoli florets", "3", "cups", "Produce"),
+                    IngredientData("snap peas", "2", "cups", "Produce"),
+                    IngredientData("carrots, julienned", "2", "", "Produce"),
+                    IngredientData("bell pepper, sliced", "1", "", "Produce"),
+                    IngredientData("soy sauce", "1/4", "cup", "Pantry"),
+                    IngredientData("rice vinegar", "2", "tbsp", "Pantry"),
+                    IngredientData("sesame oil", "2", "tbsp", "Pantry"),
+                    IngredientData("cornstarch", "1", "tbsp", "Pantry"),
+                    IngredientData("fresh ginger", "1", "tbsp", "Produce"),
+                    IngredientData("garlic cloves", "3", "", "Produce"),
+                    IngredientData("jasmine rice", "2", "cups", "Pantry")
                 ),
-                listOf(tagVegetarian, tagMain, tagAsian, tagQuick)
+                listOf(tagVegetarian, tagMain, tagAsian, tagQuick),
+                rating = 3.5f,
+                notes = "Press tofu well for best texture."
             ),
             Recipe(
                 "Baked Ziti",
                 "1. Cook ziti according to package directions.\n2. Brown Italian sausage with garlic and onion.\n3. Mix cooked pasta with marinara, ricotta, and half the mozzarella.\n4. Spread into a baking dish, top with remaining mozzarella and Parmesan.\n5. Bake at 375°F for 25 minutes until bubbly and golden.",
                 5, 15, 25,
                 listOf(
-                    Triple("ziti pasta", "1", "lb"), Triple("Italian sausage", "1", "lb"),
-                    Triple("marinara sauce", "24", "oz"), Triple("ricotta cheese", "15", "oz"),
-                    Triple("mozzarella, shredded", "2", "cups"), Triple("Parmesan, grated", "1/2", "cup"),
-                    Triple("garlic cloves, minced", "3", ""), Triple("yellow onion, diced", "1", "")
+                    IngredientData("ziti pasta", "1", "lb", "Pantry"),
+                    IngredientData("Italian sausage", "1", "lb", "Protein"),
+                    IngredientData("marinara sauce", "24", "oz", "Canned"),
+                    IngredientData("ricotta cheese", "15", "oz", "Dairy"),
+                    IngredientData("mozzarella, shredded", "2", "cups", "Dairy"),
+                    IngredientData("Parmesan, grated", "1/2", "cup", "Dairy"),
+                    IngredientData("garlic cloves, minced", "3", "", "Produce"),
+                    IngredientData("yellow onion, diced", "1", "", "Produce")
                 ),
-                listOf(tagMeat, tagMain, tagPasta, tagItalian, tagComfort)
+                listOf(tagMeat, tagMain, tagPasta, tagItalian, tagComfort),
+                rating = 4.5f,
+                notes = "Can assemble ahead and refrigerate before baking."
             ),
             Recipe(
                 "Teriyaki Salmon Bowls",
                 "1. Marinate salmon in teriyaki sauce for 15 minutes.\n2. Bake salmon at 400°F for 12-15 minutes.\n3. Cook sushi rice according to package.\n4. Prepare toppings: edamame, cucumber, avocado, pickled ginger.\n5. Assemble bowls and drizzle with extra teriyaki and sriracha mayo.",
                 5, 20, 15,
                 listOf(
-                    Triple("salmon fillets", "5", "pieces"), Triple("teriyaki sauce", "1/2", "cup"),
-                    Triple("sushi rice", "2", "cups"), Triple("edamame, shelled", "1", "cup"),
-                    Triple("cucumber, sliced", "1", ""), Triple("avocado, sliced", "2", ""),
-                    Triple("pickled ginger", "1/4", "cup"), Triple("sesame seeds", "2", "tbsp"),
-                    Triple("sriracha mayo", "1/4", "cup")
+                    IngredientData("salmon fillets", "5", "pieces", "Protein"),
+                    IngredientData("teriyaki sauce", "1/2", "cup", "Pantry"),
+                    IngredientData("sushi rice", "2", "cups", "Pantry"),
+                    IngredientData("edamame, shelled", "1", "cup", "Frozen"),
+                    IngredientData("cucumber, sliced", "1", "", "Produce"),
+                    IngredientData("avocado, sliced", "2", "", "Produce"),
+                    IngredientData("pickled ginger", "1/4", "cup", "Pantry"),
+                    IngredientData("sesame seeds", "2", "tbsp", "Pantry"),
+                    IngredientData("sriracha mayo", "1/4", "cup", "Pantry")
                 ),
-                listOf(tagFish, tagMain, tagAsian)
+                listOf(tagFish, tagMain, tagAsian),
+                rating = 4f,
+                notes = "Kids love building their own bowls."
             ),
             Recipe(
                 "Creamy Mushroom & Spinach Pasta",
                 "1. Cook penne according to package.\n2. Sauté sliced mushrooms and garlic in butter until golden.\n3. Add spinach and cook until wilted.\n4. Pour in heavy cream and Parmesan. Simmer until thickened.\n5. Toss with pasta, season with nutmeg, salt, and pepper.",
                 5, 10, 20,
                 listOf(
-                    Triple("penne pasta", "1", "lb"), Triple("cremini mushrooms, sliced", "16", "oz"),
-                    Triple("fresh spinach", "6", "oz"), Triple("heavy cream", "1", "cup"),
-                    Triple("Parmesan, grated", "3/4", "cup"), Triple("butter", "3", "tbsp"),
-                    Triple("garlic cloves, minced", "4", ""), Triple("nutmeg", "1/4", "tsp")
+                    IngredientData("penne pasta", "1", "lb", "Pantry"),
+                    IngredientData("cremini mushrooms, sliced", "16", "oz", "Produce"),
+                    IngredientData("fresh spinach", "6", "oz", "Produce"),
+                    IngredientData("heavy cream", "1", "cup", "Dairy"),
+                    IngredientData("Parmesan, grated", "3/4", "cup", "Dairy"),
+                    IngredientData("butter", "3", "tbsp", "Dairy"),
+                    IngredientData("garlic cloves, minced", "4", "", "Produce"),
+                    IngredientData("nutmeg", "1/4", "tsp", "Spices")
                 ),
-                listOf(tagVegetarian, tagMain, tagPasta, tagItalian, tagComfort, tagQuick)
+                listOf(tagVegetarian, tagMain, tagPasta, tagItalian, tagComfort, tagQuick),
+                rating = 4f,
+                notes = "Add grilled chicken for a non-vegetarian version."
             ),
             Recipe(
                 "BBQ Pulled Chicken Sandwiches",
                 "1. Place chicken breasts in slow cooker with BBQ sauce, onion, and garlic.\n2. Cook on low for 6 hours or high for 3 hours.\n3. Shred chicken with two forks and stir back into sauce.\n4. Toast brioche buns lightly.\n5. Serve with coleslaw on top.",
                 5, 10, 180,
                 listOf(
-                    Triple("chicken breasts", "3", "lbs"), Triple("BBQ sauce", "1.5", "cups"),
-                    Triple("yellow onion, sliced", "1", ""), Triple("garlic cloves", "3", ""),
-                    Triple("brioche buns", "8", ""), Triple("apple cider vinegar", "2", "tbsp"),
-                    Triple("brown sugar", "1", "tbsp"), Triple("smoked paprika", "1", "tsp")
+                    IngredientData("chicken breasts", "3", "lbs", "Protein"),
+                    IngredientData("BBQ sauce", "1.5", "cups", "Pantry"),
+                    IngredientData("yellow onion, sliced", "1", "", "Produce"),
+                    IngredientData("garlic cloves", "3", "", "Produce"),
+                    IngredientData("brioche buns", "8", "", "Bakery"),
+                    IngredientData("apple cider vinegar", "2", "tbsp", "Pantry"),
+                    IngredientData("brown sugar", "1", "tbsp", "Pantry"),
+                    IngredientData("smoked paprika", "1", "tsp", "Spices")
                 ),
-                listOf(tagChicken, tagMain, tagComfort)
+                listOf(tagChicken, tagMain, tagComfort),
+                rating = 4f,
+                notes = "Set it and forget it. Great for busy days."
             ),
             Recipe(
                 "Chickpea Coconut Curry",
                 "1. Sauté onion, garlic, and ginger in coconut oil.\n2. Add curry powder, turmeric, and cumin. Toast spices 1 minute.\n3. Add chickpeas, diced tomatoes, and coconut milk.\n4. Simmer 20 minutes until thickened.\n5. Stir in spinach, season to taste. Serve over basmati rice.",
                 5, 10, 25,
                 listOf(
-                    Triple("chickpeas, drained", "2", "cans"), Triple("coconut milk", "14", "oz"),
-                    Triple("diced tomatoes", "14", "oz"), Triple("fresh spinach", "4", "cups"),
-                    Triple("yellow onion, diced", "1", ""), Triple("garlic cloves", "3", ""),
-                    Triple("fresh ginger", "1", "tbsp"), Triple("curry powder", "2", "tbsp"),
-                    Triple("turmeric", "1", "tsp"), Triple("cumin", "1", "tsp"),
-                    Triple("basmati rice", "2", "cups"), Triple("coconut oil", "2", "tbsp")
+                    IngredientData("chickpeas, drained", "2", "cans", "Canned"),
+                    IngredientData("coconut milk", "14", "oz", "Canned"),
+                    IngredientData("diced tomatoes", "14", "oz", "Canned"),
+                    IngredientData("fresh spinach", "4", "cups", "Produce"),
+                    IngredientData("yellow onion, diced", "1", "", "Produce"),
+                    IngredientData("garlic cloves", "3", "", "Produce"),
+                    IngredientData("fresh ginger", "1", "tbsp", "Produce"),
+                    IngredientData("curry powder", "2", "tbsp", "Spices"),
+                    IngredientData("turmeric", "1", "tsp", "Spices"),
+                    IngredientData("cumin", "1", "tsp", "Spices"),
+                    IngredientData("basmati rice", "2", "cups", "Pantry"),
+                    IngredientData("coconut oil", "2", "tbsp", "Pantry")
                 ),
-                listOf(tagVegetarian, tagMain, tagAsian, tagComfort)
+                listOf(tagVegetarian, tagMain, tagAsian, tagComfort),
+                rating = 4.5f,
+                notes = "One of our go-to vegetarian meals. Double the curry powder for extra heat."
             ),
             Recipe(
                 "Garlic Butter Shrimp Scampi",
                 "1. Cook linguine according to package.\n2. Sauté shrimp in butter and olive oil until pink, about 2 min per side.\n3. Add garlic, red pepper flakes, and white wine. Simmer 3 minutes.\n4. Toss in pasta with lemon juice and parsley.\n5. Top with Parmesan.",
                 5, 10, 15,
                 listOf(
-                    Triple("large shrimp, peeled", "2", "lbs"), Triple("linguine", "1", "lb"),
-                    Triple("butter", "4", "tbsp"), Triple("garlic cloves, minced", "6", ""),
-                    Triple("white wine", "1/2", "cup"), Triple("lemon, juiced", "2", ""),
-                    Triple("red pepper flakes", "1/2", "tsp"), Triple("fresh parsley", "1/4", "cup"),
-                    Triple("Parmesan, grated", "1/2", "cup"), Triple("olive oil", "2", "tbsp")
+                    IngredientData("large shrimp, peeled", "2", "lbs", "Protein"),
+                    IngredientData("linguine", "1", "lb", "Pantry"),
+                    IngredientData("butter", "4", "tbsp", "Dairy"),
+                    IngredientData("garlic cloves, minced", "6", "", "Produce"),
+                    IngredientData("white wine", "1/2", "cup", "Pantry"),
+                    IngredientData("lemon, juiced", "2", "", "Produce"),
+                    IngredientData("red pepper flakes", "1/2", "tsp", "Spices"),
+                    IngredientData("fresh parsley", "1/4", "cup", "Produce"),
+                    IngredientData("Parmesan, grated", "1/2", "cup", "Dairy"),
+                    IngredientData("olive oil", "2", "tbsp", "Pantry")
                 ),
-                listOf(tagFish, tagMain, tagPasta, tagItalian, tagQuick)
+                listOf(tagFish, tagMain, tagPasta, tagItalian, tagQuick),
+                rating = 4.5f,
+                notes = "Use dry white wine like Pinot Grigio."
             ),
 
             // === SIDE DISHES ===
@@ -216,82 +302,119 @@ class SeedDatabaseCallback(
                 "1. Cut broccoli into florets.\n2. Toss with olive oil, minced garlic, salt, and pepper.\n3. Spread on baking sheet in single layer.\n4. Roast at 425°F for 20 minutes until edges are crispy.\n5. Toss with grated Parmesan immediately after removing from oven.",
                 5, 5, 20,
                 listOf(
-                    Triple("broccoli crowns", "3", ""), Triple("olive oil", "3", "tbsp"),
-                    Triple("garlic cloves, minced", "4", ""), Triple("Parmesan, grated", "1/2", "cup"),
-                    Triple("salt", "1", "tsp"), Triple("black pepper", "1/2", "tsp")
+                    IngredientData("broccoli crowns", "3", "", "Produce"),
+                    IngredientData("olive oil", "3", "tbsp", "Pantry"),
+                    IngredientData("garlic cloves, minced", "4", "", "Produce"),
+                    IngredientData("Parmesan, grated", "1/2", "cup", "Dairy"),
+                    IngredientData("salt", "1", "tsp", "Spices"),
+                    IngredientData("black pepper", "1/2", "tsp", "Spices")
                 ),
-                listOf(tagVegetarian, tagSide, tagQuick)
+                listOf(tagVegetarian, tagSide, tagQuick),
+                rating = 4f,
+                notes = "Don''t overcrowd the pan for best crispiness."
             ),
             Recipe(
                 "Mexican Street Corn Salad",
                 "1. Char corn kernels in a hot skillet or grill corn on the cob.\n2. Mix with mayo, sour cream, lime juice, and chili powder.\n3. Add crumbled cotija cheese and chopped cilantro.\n4. Season with salt and cayenne to taste.\n5. Serve warm or cold.",
                 5, 10, 10,
                 listOf(
-                    Triple("corn kernels (fresh or frozen)", "6", "cups"), Triple("mayonnaise", "1/4", "cup"),
-                    Triple("sour cream", "1/4", "cup"), Triple("lime, juiced", "2", ""),
-                    Triple("chili powder", "1", "tsp"), Triple("cotija cheese", "1/2", "cup"),
-                    Triple("cilantro, chopped", "1/4", "cup"), Triple("cayenne pepper", "1/4", "tsp")
+                    IngredientData("corn kernels (fresh or frozen)", "6", "cups", "Produce"),
+                    IngredientData("mayonnaise", "1/4", "cup", "Pantry"),
+                    IngredientData("sour cream", "1/4", "cup", "Dairy"),
+                    IngredientData("lime, juiced", "2", "", "Produce"),
+                    IngredientData("chili powder", "1", "tsp", "Spices"),
+                    IngredientData("cotija cheese", "1/2", "cup", "Dairy"),
+                    IngredientData("cilantro, chopped", "1/4", "cup", "Produce"),
+                    IngredientData("cayenne pepper", "1/4", "tsp", "Spices")
                 ),
-                listOf(tagVegetarian, tagSide, tagMexican, tagQuick)
+                listOf(tagVegetarian, tagSide, tagMexican, tagQuick),
+                rating = 4.5f,
+                notes = "Great summer side dish. Grilling the corn adds smokiness."
             ),
             Recipe(
                 "Garlic Mashed Potatoes",
                 "1. Peel and cube potatoes. Boil in salted water until fork-tender, about 15 min.\n2. Roast garlic cloves in olive oil at 400°F for 20 min (or sauté in butter).\n3. Drain potatoes. Add butter, warm cream, and roasted garlic.\n4. Mash to desired consistency.\n5. Season with salt, pepper, and chives.",
                 5, 10, 20,
                 listOf(
-                    Triple("russet potatoes", "5", "lbs"), Triple("butter", "1/2", "cup"),
-                    Triple("heavy cream", "1/2", "cup"), Triple("garlic cloves", "8", ""),
-                    Triple("chives, chopped", "2", "tbsp"), Triple("salt", "2", "tsp")
+                    IngredientData("russet potatoes", "5", "lbs", "Produce"),
+                    IngredientData("butter", "1/2", "cup", "Dairy"),
+                    IngredientData("heavy cream", "1/2", "cup", "Dairy"),
+                    IngredientData("garlic cloves", "8", "", "Produce"),
+                    IngredientData("chives, chopped", "2", "tbsp", "Produce"),
+                    IngredientData("salt", "2", "tsp", "Spices")
                 ),
-                listOf(tagVegetarian, tagSide, tagComfort)
+                listOf(tagVegetarian, tagSide, tagComfort),
+                rating = 4f,
+                notes = "Yukon Gold also works well. Keep cream warm to avoid lumps."
             ),
             Recipe(
                 "Asian Cucumber Salad",
                 "1. Slice cucumbers thinly (use a mandoline if available).\n2. Whisk together rice vinegar, sesame oil, soy sauce, sugar, and chili flakes.\n3. Toss cucumbers in dressing.\n4. Garnish with sesame seeds and sliced green onion.\n5. Let marinate 10 minutes before serving.",
                 5, 10, 0,
                 listOf(
-                    Triple("English cucumbers", "3", ""), Triple("rice vinegar", "3", "tbsp"),
-                    Triple("sesame oil", "2", "tbsp"), Triple("soy sauce", "1", "tbsp"),
-                    Triple("sugar", "1", "tbsp"), Triple("red pepper flakes", "1/2", "tsp"),
-                    Triple("sesame seeds", "1", "tbsp"), Triple("green onions, sliced", "2", "")
+                    IngredientData("English cucumbers", "3", "", "Produce"),
+                    IngredientData("rice vinegar", "3", "tbsp", "Pantry"),
+                    IngredientData("sesame oil", "2", "tbsp", "Pantry"),
+                    IngredientData("soy sauce", "1", "tbsp", "Pantry"),
+                    IngredientData("sugar", "1", "tbsp", "Pantry"),
+                    IngredientData("red pepper flakes", "1/2", "tsp", "Spices"),
+                    IngredientData("sesame seeds", "1", "tbsp", "Pantry"),
+                    IngredientData("green onions, sliced", "2", "", "Produce")
                 ),
-                listOf(tagVegetarian, tagSide, tagAsian, tagQuick)
+                listOf(tagVegetarian, tagSide, tagAsian, tagQuick),
+                rating = 3.5f,
+                notes = "Refreshing side. Best served within an hour."
             ),
             Recipe(
                 "Cilantro Lime Rice",
                 "1. Rinse rice until water runs clear.\n2. Cook rice in water with a bay leaf and a drizzle of oil.\n3. Fluff with a fork when done.\n4. Stir in lime juice, lime zest, and chopped cilantro.\n5. Season with salt. Serve immediately.",
                 5, 5, 20,
                 listOf(
-                    Triple("long grain white rice", "2", "cups"), Triple("water", "3.5", "cups"),
-                    Triple("lime, juiced and zested", "2", ""), Triple("cilantro, chopped", "3/4", "cup"),
-                    Triple("bay leaf", "1", ""), Triple("olive oil", "1", "tbsp"),
-                    Triple("salt", "1", "tsp")
+                    IngredientData("long grain white rice", "2", "cups", "Pantry"),
+                    IngredientData("water", "3.5", "cups", ""),
+                    IngredientData("lime, juiced and zested", "2", "", "Produce"),
+                    IngredientData("cilantro, chopped", "3/4", "cup", "Produce"),
+                    IngredientData("bay leaf", "1", "", "Spices"),
+                    IngredientData("olive oil", "1", "tbsp", "Pantry"),
+                    IngredientData("salt", "1", "tsp", "Spices")
                 ),
-                listOf(tagVegetarian, tagSide, tagMexican, tagQuick)
+                listOf(tagVegetarian, tagSide, tagMexican, tagQuick),
+                rating = 4f,
+                notes = "Chipotle copycat. Goes with any Mexican main."
             ),
             Recipe(
                 "Caprese Salad",
                 "1. Slice tomatoes and fresh mozzarella into 1/4-inch rounds.\n2. Arrange alternating slices on a platter.\n3. Tuck fresh basil leaves between slices.\n4. Drizzle generously with extra virgin olive oil and balsamic glaze.\n5. Season with flaky sea salt and cracked pepper.",
                 5, 10, 0,
                 listOf(
-                    Triple("large tomatoes", "4", ""), Triple("fresh mozzarella", "16", "oz"),
-                    Triple("fresh basil leaves", "1", "bunch"), Triple("extra virgin olive oil", "3", "tbsp"),
-                    Triple("balsamic glaze", "2", "tbsp"), Triple("flaky sea salt", "1", "tsp"),
-                    Triple("cracked black pepper", "1/2", "tsp")
+                    IngredientData("large tomatoes", "4", "", "Produce"),
+                    IngredientData("fresh mozzarella", "16", "oz", "Dairy"),
+                    IngredientData("fresh basil leaves", "1", "bunch", "Produce"),
+                    IngredientData("extra virgin olive oil", "3", "tbsp", "Pantry"),
+                    IngredientData("balsamic glaze", "2", "tbsp", "Pantry"),
+                    IngredientData("flaky sea salt", "1", "tsp", "Spices"),
+                    IngredientData("cracked black pepper", "1/2", "tsp", "Spices")
                 ),
-                listOf(tagVegetarian, tagSide, tagItalian, tagQuick)
+                listOf(tagVegetarian, tagSide, tagItalian, tagQuick),
+                rating = 4f,
+                notes = "Use the ripest tomatoes you can find. Burrata is a great substitute."
             ),
             Recipe(
                 "Honey Roasted Carrots",
                 "1. Peel and cut carrots into sticks or halve lengthwise.\n2. Toss with olive oil, honey, thyme, salt, and pepper.\n3. Spread on a baking sheet in a single layer.\n4. Roast at 400°F for 25-30 minutes, flipping halfway.\n5. Finish with a squeeze of lemon and fresh thyme.",
                 5, 10, 30,
                 listOf(
-                    Triple("large carrots", "2", "lbs"), Triple("honey", "2", "tbsp"),
-                    Triple("olive oil", "2", "tbsp"), Triple("fresh thyme", "4", "sprigs"),
-                    Triple("lemon", "1", ""), Triple("salt", "1", "tsp"),
-                    Triple("black pepper", "1/2", "tsp")
+                    IngredientData("large carrots", "2", "lbs", "Produce"),
+                    IngredientData("honey", "2", "tbsp", "Pantry"),
+                    IngredientData("olive oil", "2", "tbsp", "Pantry"),
+                    IngredientData("fresh thyme", "4", "sprigs", "Produce"),
+                    IngredientData("lemon", "1", "", "Produce"),
+                    IngredientData("salt", "1", "tsp", "Spices"),
+                    IngredientData("black pepper", "1/2", "tsp", "Spices")
                 ),
-                listOf(tagVegetarian, tagSide)
+                listOf(tagVegetarian, tagSide),
+                rating = 3.5f,
+                notes = "Rainbow carrots make this dish extra colorful."
             )
         )
 
@@ -301,15 +424,15 @@ class SeedDatabaseCallback(
             val recipeId = uuid()
 
             db.execSQL(
-                """INSERT INTO recipes (id, name, instructions, servings, prepTimeMinutes, cookTimeMinutes, isArchived, createdAt, updatedAt)
-                   VALUES ('$recipeId', '${recipe.name.esc()}', '${recipe.instructions.esc()}', ${recipe.servings}, ${recipe.prepMin}, ${recipe.cookMin}, 0, $now, $now)"""
+                """INSERT INTO recipes (id, name, instructions, servings, prepTimeMinutes, cookTimeMinutes, imageUri, sourceUrl, rating, notes, isArchived, createdAt, updatedAt)
+                   VALUES ('$recipeId', '${recipe.name.esc()}', '${recipe.instructions.esc()}', ${recipe.servings}, ${recipe.prepMin}, ${recipe.cookMin}, NULL, '${recipe.sourceUrl.esc()}', ${recipe.rating}, '${recipe.notes.esc()}', 0, $now, $now)"""
             )
 
-            for ((ingName, qty, unit) in recipe.ingredients) {
+            for (ing in recipe.ingredients) {
                 val ingId = uuid()
                 db.execSQL(
                     """INSERT INTO ingredients (id, recipeId, name, quantity, unit, category)
-                       VALUES ('$ingId', '$recipeId', '${ingName.esc()}', '${qty.esc()}', '${unit.esc()}', '')"""
+                       VALUES ('$ingId', '$recipeId', '${ing.name.esc()}', '${ing.qty.esc()}', '${ing.unit.esc()}', '${ing.category.esc()}')"""
                 )
             }
 

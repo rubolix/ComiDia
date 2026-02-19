@@ -23,7 +23,7 @@ import com.rubolix.comidia.data.local.entity.*
         DailyTodoEntity::class,
         AppSettingsEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class ComiDiaDatabase : RoomDatabase() {
