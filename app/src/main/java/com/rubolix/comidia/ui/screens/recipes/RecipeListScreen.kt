@@ -23,7 +23,6 @@ enum class RecipeViewMode { LATEST, BY_TAGS, BY_CATEGORIES }
 fun RecipeListScreen(
     onNavigateToRecipe: (String) -> Unit,
     onNavigateToNewRecipe: () -> Unit,
-    onNavigateToSettings: () -> Unit,
     viewModel: RecipeListViewModel = hiltViewModel()
 ) {
     val recipes by viewModel.filteredRecipes.collectAsState()
@@ -40,12 +39,7 @@ fun RecipeListScreen(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                ),
-                actions = {
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
-                    }
-                }
+                )
             )
         },
         floatingActionButton = {

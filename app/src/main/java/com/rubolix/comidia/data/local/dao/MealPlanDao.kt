@@ -66,4 +66,20 @@ interface MealPlanDao {
 
     @Query("UPDATE weekly_items SET isCompleted = :completed WHERE id = :id")
     suspend fun setWeeklyItemCompleted(id: String, completed: Boolean)
+
+    // Daily todos
+    @Query("SELECT * FROM daily_todos WHERE date = :date ORDER BY id ASC")
+    fun getDailyTodos(date: String): Flow<List<DailyTodoEntity>>
+
+    @Query("SELECT * FROM daily_todos WHERE date BETWEEN :startDate AND :endDate ORDER BY date ASC, id ASC")
+    fun getDailyTodosForRange(startDate: String, endDate: String): Flow<List<DailyTodoEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDailyTodo(todo: DailyTodoEntity)
+
+    @Delete
+    suspend fun deleteDailyTodo(todo: DailyTodoEntity)
+
+    @Query("UPDATE daily_todos SET isCompleted = :completed WHERE id = :id")
+    suspend fun setDailyTodoCompleted(id: String, completed: Boolean)
 }

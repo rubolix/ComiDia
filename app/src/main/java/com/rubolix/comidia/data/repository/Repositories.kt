@@ -80,6 +80,16 @@ class MealPlanRepository @Inject constructor(
 
     suspend fun toggleWeeklyItem(id: String, completed: Boolean) =
         mealPlanDao.setWeeklyItemCompleted(id, completed)
+
+    fun getDailyTodos(startDate: String, endDate: String): Flow<List<DailyTodoEntity>> =
+        mealPlanDao.getDailyTodosForRange(startDate, endDate)
+
+    suspend fun addDailyTodo(todo: DailyTodoEntity) = mealPlanDao.insertDailyTodo(todo)
+
+    suspend fun deleteDailyTodo(todo: DailyTodoEntity) = mealPlanDao.deleteDailyTodo(todo)
+
+    suspend fun toggleDailyTodo(id: String, completed: Boolean) =
+        mealPlanDao.setDailyTodoCompleted(id, completed)
 }
 
 @Singleton

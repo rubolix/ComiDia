@@ -41,8 +41,9 @@ class MenuViewModel @Inject constructor(
         (0..6).map { start.plusDays(it.toLong()) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _visibleMealTypes = MutableStateFlow(setOf("dinner"))
-    val visibleMealTypes: StateFlow<Set<String>> = _visibleMealTypes
+    // Per-day expanded meal types (dinner always shown, others toggled per day)
+    private val _expandedMealTypes = MutableStateFlow<Map<LocalDate, Set<String>>>(emptyMap())
+    val expandedMealTypes: StateFlow<Map<LocalDate, Set<String>>> = _expandedMealTypes
 
     val mealSlots: StateFlow<List<MealSlotWithRecipes>> = _currentWeekStart.flatMapLatest { start ->
         val end = start.plusDays(6)
@@ -56,13 +57,15 @@ class MenuViewModel @Inject constructor(
         mealPlanRepository.getWeeklyItems(start.format(dateFormatter))
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val dailyTodos: StateFlow<List<DailyTodoEntity>> = _currentWeekStart.flatMapLatest { start ->
+        val end = start.plusDays(6)
+        mealPlanRepository.getDailyTodos(start.format(dateFormatter), end.format(dateFormatter))
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val recipes: StateFlow<List<RecipeWithTags>> = recipeRepository.getAllRecipesWithTags()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val activeGoals: StateFlow<List<MealPlanGoalEntity>> = goalRepository.getActiveGoals()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val allTags: StateFlow<List<TagEntity>> = recipeRepository.getAllTags()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val goalStatuses: StateFlow<List<GoalStatus>> = combine(
@@ -91,9 +94,11 @@ class MenuViewModel @Inject constructor(
     fun previousWeek() { _currentWeekStart.update { it.minusWeeks(1) } }
     fun nextWeek() { _currentWeekStart.update { it.plusWeeks(1) } }
 
-    fun toggleMealType(type: String) {
-        _visibleMealTypes.update { current ->
-            if (type in current) current - type else current + type
+    fun toggleMealTypeForDay(day: LocalDate, mealType: String) {
+        _expandedMealTypes.update { current ->
+            val dayTypes = current[day] ?: emptySet()
+            val updated = if (mealType in dayTypes) dayTypes - mealType else dayTypes + mealType
+            current + (day to updated)
         }
     }
 
@@ -126,5 +131,21 @@ class MenuViewModel @Inject constructor(
 
     fun toggleWeeklyItem(item: WeeklyItemEntity) {
         viewModelScope.launch { mealPlanRepository.toggleWeeklyItem(item.id, !item.isCompleted) }
+    }
+
+    fun addDailyTodo(date: LocalDate, text: String) {
+        viewModelScope.launch {
+            mealPlanRepository.addDailyTodo(
+                DailyTodoEntity(date = date.format(dateFormatter), text = text)
+            )
+        }
+    }
+
+    fun deleteDailyTodo(todo: DailyTodoEntity) {
+        viewModelScope.launch { mealPlanRepository.deleteDailyTodo(todo) }
+    }
+
+    fun toggleDailyTodo(todo: DailyTodoEntity) {
+        viewModelScope.launch { mealPlanRepository.toggleDailyTodo(todo.id, !todo.isCompleted) }
     }
 }

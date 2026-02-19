@@ -18,9 +18,10 @@ import com.rubolix.comidia.data.local.entity.*
         WeeklyItemEntity::class,
         RecipeCategoryEntity::class,
         RecipeCategoryCrossRef::class,
-        MealPlanGoalEntity::class
+        MealPlanGoalEntity::class,
+        DailyTodoEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class ComiDiaDatabase : RoomDatabase() {

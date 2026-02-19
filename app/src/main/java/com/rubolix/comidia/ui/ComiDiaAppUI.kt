@@ -85,8 +85,7 @@ fun ComiDiaAppUI() {
                     },
                     onNavigateToNewRecipe = {
                         navController.navigate(Screen.RecipeEdit.createRoute("new"))
-                    },
-                    onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
+                    }
                 )
             }
             composable(
