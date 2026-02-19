@@ -3,6 +3,7 @@ package com.rubolix.comidia.di
 import android.content.Context
 import androidx.room.Room
 import com.rubolix.comidia.data.local.ComiDiaDatabase
+import com.rubolix.comidia.data.local.SeedDatabaseCallback
 import com.rubolix.comidia.data.local.dao.MealPlanDao
 import com.rubolix.comidia.data.local.dao.RecipeDao
 import dagger.Module
@@ -23,7 +24,9 @@ object DatabaseModule {
             context,
             ComiDiaDatabase::class.java,
             "comidia.db"
-        ).build()
+        )
+            .addCallback(SeedDatabaseCallback(context))
+            .build()
     }
 
     @Provides
