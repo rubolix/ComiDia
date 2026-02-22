@@ -16,5 +16,9 @@ import androidx.room.Index
 data class MealSlotRecipeCrossRef(
     val mealSlotId: String,
     val recipeId: String,
-    val sortOrder: Int = 0
+    val sortOrder: Int = 0,
+    val isLeftover: Boolean = false, // This means "Consumption" (no ingredients)
+    val generatesLeftovers: Boolean = false, // This means "Source" (has ingredients)
+    val fromFreezer: Boolean = false,
+    val servings: Int? = null
 )

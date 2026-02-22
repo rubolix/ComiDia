@@ -128,4 +128,39 @@ interface RecipeDao {
         val source = getRecipeById(sourceId) ?: return
         insertRecipe(source.copy(id = newId, name = "${source.name} (Copy)", updatedAt = System.currentTimeMillis()))
     }
+
+    // Ingredient Preferences
+    @Query("SELECT * FROM user_ingredient_preferences WHERE weekStartDate = :weekStart")
+    fun getIngredientPreferences(weekStart: String): Flow<List<UserIngredientPreference>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertIngredientPreference(pref: UserIngredientPreference)
+
+    @Query("DELETE FROM user_ingredient_preferences WHERE weekStartDate = :weekStart AND ingredientName = :name")
+    suspend fun deleteIngredientPreference(weekStart: String, name: String)
+
+    @Query("SELECT * FROM recipes WHERE rating >= :minRating AND isArchived = 0")
+    suspend fun getRecipesByMinRating(minRating: Float): List<RecipeEntity>
+
+    @Query("""
+        SELECT recipeId, COUNT(*) as count FROM meal_slot_recipes msr
+        INNER JOIN meal_slots ms ON msr.mealSlotId = ms.id
+        WHERE ms.date >= :sinceDate
+        GROUP BY recipeId
+    """)
+    suspend fun getRecipeUsageCountsSince(sinceDate: Long): List<RecipeUsageCount>
+
+    @Query("SELECT * FROM tags WHERE name = :name LIMIT 1")
+    suspend fun getTagByName(name: String): TagEntity?
+
+    @Transaction
+    suspend fun updateTagLinksForRecipes(tagId: String, recipeIds: Set<String>) {
+        // We only add the tag to these recipes, we don't remove it from others 
+        // because the user said "can be added manually, but should ALSO be prepopulated"
+        recipeIds.forEach { rid ->
+            insertRecipeTagCrossRef(RecipeTagCrossRef(rid, tagId))
+        }
+    }
+
+    data class RecipeUsageCount(val recipeId: String, val count: Int)
 }

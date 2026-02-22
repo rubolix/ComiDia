@@ -8,6 +8,7 @@ import com.rubolix.comidia.data.local.dao.GoalDao
 import com.rubolix.comidia.data.local.dao.MealPlanDao
 import com.rubolix.comidia.data.local.dao.RecipeDao
 import com.rubolix.comidia.data.local.dao.SettingsDao
+import com.rubolix.comidia.data.local.dao.StapleDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -43,4 +44,10 @@ object DatabaseModule {
 
     @Provides
     fun provideSettingsDao(db: ComiDiaDatabase): SettingsDao = db.settingsDao()
+
+    @Provides
+    fun provideStapleDao(db: ComiDiaDatabase): StapleDao = db.stapleDao()
+
+    @Provides
+    fun provideManualIngredientDao(db: ComiDiaDatabase) = db.manualIngredientDao()
 }

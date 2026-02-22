@@ -17,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -94,27 +95,41 @@ fun RecipeDetailScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Star rating
-                if (full.recipe.rating > 0f) {
+                // Interactive Star rating & Kid Approved
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         repeat(5) { i ->
-                            Icon(
-                                if (i < full.recipe.rating.toInt()) Icons.Default.Star
-                                else if (i.toFloat() < full.recipe.rating) Icons.Default.Star // half star approximation
-                                else Icons.Default.StarBorder,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
+                            IconButton(
+                                onClick = { 
+                                    viewModel.updateRating(if (full.recipe.rating == (i + 1).toFloat()) 0f else (i + 1).toFloat()) 
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    if (i < full.recipe.rating.toInt()) Icons.Default.Star
+                                    else Icons.Default.StarBorder,
+                                    contentDescription = "Rate ${i + 1}",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
                         }
-                        if (full.recipe.rating > 0f) {
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                String.format("%.1f", full.recipe.rating),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                    }
+                    
+                    IconButton(
+                        onClick = { viewModel.updateKidApproved(!full.recipe.isKidApproved) },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Face,
+                            contentDescription = "Kid Approved",
+                            tint = if (full.recipe.isKidApproved) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                            modifier = Modifier.size(32.dp)
+                        )
                     }
                 }
 
@@ -137,7 +152,9 @@ fun RecipeDetailScreen(
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.clickable {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(full.recipe.sourceUrl)))
+                            try {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(full.recipe.sourceUrl)))
+                            } catch(e: Exception) { }
                         }
                     ) {
                         Icon(Icons.Default.Link, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)

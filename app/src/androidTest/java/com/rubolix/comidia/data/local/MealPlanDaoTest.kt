@@ -154,4 +154,44 @@ class MealPlanDaoTest {
         val mealTypes = slots.map { it.mealSlot.mealType }.toSet()
         assertTrue(mealTypes.containsAll(setOf("breakfast", "lunch", "dinner")))
     }
+
+    @Test
+    fun addRecipeWithLeftoverFlag() = runTest {
+        mealPlanDao.addRecipeToSlot("2024-01-15", "dinner", "r1", generatesLeftovers = true)
+        
+        val slots = mealPlanDao.getMealSlotsForDateRange("2024-01-15", "2024-01-15").first()
+        val ref = slots[0].recipeRefs[0]
+        assertTrue(ref.generatesLeftovers)
+        assertFalse(ref.isLeftover)
+    }
+
+    @Test
+    fun addCustomEntryToSlot_works() = runTest {
+        mealPlanDao.addCustomEntryToSlot("2024-01-15", "dinner", "Pizza", "takeout")
+        
+        val slots = mealPlanDao.getMealSlotsForDateRange("2024-01-15", "2024-01-15").first()
+        assertEquals(1, slots[0].customEntries.size)
+        assertEquals("Pizza", slots[0].customEntries[0].title)
+        assertEquals("takeout", slots[0].customEntries[0].type)
+    }
+
+    @Test
+    fun getSourceLeftoversForRange_filtersCorrectly() = runTest {
+        mealPlanDao.addRecipeToSlot("2024-01-15", "dinner", "r1", generatesLeftovers = true)
+        mealPlanDao.addRecipeToSlot("2024-01-16", "dinner", "r2", generatesLeftovers = false)
+        
+        val leftovers = mealPlanDao.getSourceLeftoversForRange("2024-01-15", "2024-01-31").first()
+        assertEquals(1, leftovers.size)
+        assertEquals("r1", leftovers[0].recipe.id)
+    }
+
+    @Test
+    fun weekMetadata_persistence() = runTest {
+        val meta = WeekMetadata("2024-01-15", true)
+        mealPlanDao.insertWeekMetadata(meta)
+
+        val retrieved = mealPlanDao.getWeekMetadata("2024-01-15").first()
+        assertNotNull(retrieved)
+        assertTrue(retrieved!!.availabilityPassDone)
+    }
 }

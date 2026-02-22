@@ -6,6 +6,8 @@ import com.rubolix.comidia.data.local.dao.MealPlanDao
 import com.rubolix.comidia.data.local.dao.RecipeDao
 import com.rubolix.comidia.data.local.dao.GoalDao
 import com.rubolix.comidia.data.local.dao.SettingsDao
+import com.rubolix.comidia.data.local.dao.StapleDao
+import com.rubolix.comidia.data.local.dao.ManualIngredientDao
 import com.rubolix.comidia.data.local.entity.*
 
 @Database(
@@ -21,9 +23,14 @@ import com.rubolix.comidia.data.local.entity.*
         RecipeCategoryCrossRef::class,
         MealPlanGoalEntity::class,
         DailyTodoEntity::class,
-        AppSettingsEntity::class
+        AppSettingsEntity::class,
+        MealSlotCustomEntry::class,
+        UserIngredientPreference::class,
+        StapleEntity::class,
+        WeekMetadata::class,
+        ManualIngredientEntity::class
     ],
-    version = 5,
+    version = 15,
     exportSchema = false
 )
 abstract class ComiDiaDatabase : RoomDatabase() {
@@ -31,4 +38,6 @@ abstract class ComiDiaDatabase : RoomDatabase() {
     abstract fun mealPlanDao(): MealPlanDao
     abstract fun goalDao(): GoalDao
     abstract fun settingsDao(): SettingsDao
+    abstract fun stapleDao(): StapleDao
+    abstract fun manualIngredientDao(): ManualIngredientDao
 }

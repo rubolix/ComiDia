@@ -80,6 +80,15 @@ data class RecipeWithTagsAndCategories(
     val categories: List<RecipeCategoryEntity>
 )
 
+data class RecipeWithLeftoverInfo(
+    @Embedded val recipe: RecipeEntity,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "recipeId"
+    )
+    val crossRef: MealSlotRecipeCrossRef
+)
+
 data class MealSlotWithRecipes(
     @Embedded val mealSlot: MealSlotEntity,
     @Relation(
@@ -91,5 +100,15 @@ data class MealSlotWithRecipes(
             entityColumn = "recipeId"
         )
     )
-    val recipes: List<RecipeEntity>
+    val recipes: List<RecipeEntity>,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "mealSlotId"
+    )
+    val recipeRefs: List<MealSlotRecipeCrossRef>,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "mealSlotId"
+    )
+    val customEntries: List<MealSlotCustomEntry>
 )

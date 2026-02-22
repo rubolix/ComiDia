@@ -15,33 +15,28 @@ class SeedDatabaseCallback(
     override fun onCreate(db: SupportSQLiteDatabase) {
         super.onCreate(db)
         CoroutineScope(Dispatchers.IO).launch {
-            seedDatabase(db)
+            DatabaseSeeder.seedDatabase(db)
         }
     }
+}
 
-    private fun seedDatabase(db: SupportSQLiteDatabase) {
-        // Create tags
-        val tagMeat = uuid()
-        val tagVegetarian = uuid()
-        val tagFish = uuid()
-        val tagChicken = uuid()
-        val tagPasta = uuid()
-        val tagQuick = uuid()
-        val tagSide = uuid()
-        val tagMain = uuid()
-        val tagMexican = uuid()
-        val tagAsian = uuid()
-        val tagItalian = uuid()
-        val tagComfort = uuid()
+object DatabaseSeeder {
 
-        val tags = listOf(
-            tagMeat to "Meat", tagVegetarian to "Vegetarian", tagFish to "Fish",
-            tagChicken to "Chicken", tagPasta to "Pasta", tagQuick to "Quick (< 30 min)",
-            tagSide to "Side Dish", tagMain to "Main Dish", tagMexican to "Mexican",
-            tagAsian to "Asian", tagItalian to "Italian", tagComfort to "Comfort Food"
+    fun seedDatabase(db: SupportSQLiteDatabase) {
+        // Create standard tags
+        val standardTags = listOf(
+            "Main Dish", "Side Dish", "Snack", "Sweet", "Savory",
+            "Vegetarian", "Vegan", "Meat", "Fish and Seafood", "Dessert",
+            "Family Staple", "Quick", "Prep Ahead", "Batch Cooking",
+            "Breakfast", "Beverage", "Pasta", "Spoon Dish", "Favorites"
         )
-        tags.forEach { (id, name) ->
-            db.execSQL("INSERT INTO tags (id, name, color) VALUES ('$id', '$name', ${0xFF6750A4})")
+        
+        val tagIds = mutableMapOf<String, String>()
+        
+        standardTags.forEach { name ->
+            val id = UUID.randomUUID().toString()
+            tagIds[name] = id
+            db.execSQL("INSERT OR IGNORE INTO tags (id, name, color) VALUES ('$id', '$name', ${0xFF6750A4})")
         }
 
         data class IngredientData(
@@ -58,7 +53,7 @@ class SeedDatabaseCallback(
             val prepMin: Int,
             val cookMin: Int,
             val ingredients: List<IngredientData>,
-            val tagIds: List<String>,
+            val tagNames: List<String>,
             val sourceUrl: String = "",
             val rating: Float = 0f,
             val notes: String = ""
@@ -80,7 +75,7 @@ class SeedDatabaseCallback(
                     IngredientData("green onions, sliced", "3", "", "Produce"),
                     IngredientData("olive oil", "2", "tbsp", "Pantry")
                 ),
-                listOf(tagChicken, tagMain, tagAsian),
+                listOf("Chicken", "Main Dish", "Asian"),
                 rating = 4.5f,
                 notes = "Family favorite. Can substitute drumsticks."
             ),
@@ -101,7 +96,7 @@ class SeedDatabaseCallback(
                     IngredientData("shredded cheddar", "1", "cup", "Dairy"),
                     IngredientData("sour cream", "1/2", "cup", "Dairy")
                 ),
-                listOf(tagMeat, tagMain, tagComfort, tagMexican),
+                listOf("Meat", "Main Dish", "Comfort Food", "Mexican"),
                 rating = 4f,
                 notes = "Freezes well. Great for batch cooking."
             ),
@@ -118,7 +113,7 @@ class SeedDatabaseCallback(
                     IngredientData("salt", "1", "tsp", "Spices"),
                     IngredientData("black pepper", "1/2", "tsp", "Spices")
                 ),
-                listOf(tagFish, tagMain, tagQuick),
+                listOf("Fish and Seafood", "Main Dish", "Quick"),
                 rating = 4.5f,
                 notes = "Quick weeknight dinner. Kids prefer it with teriyaki glaze."
             ),
@@ -137,7 +132,7 @@ class SeedDatabaseCallback(
                     IngredientData("chili powder", "1", "tsp", "Spices"),
                     IngredientData("queso fresco", "1/2", "cup", "Dairy")
                 ),
-                listOf(tagVegetarian, tagMain, tagMexican),
+                listOf("Vegetarian", "Main Dish", "Mexican"),
                 rating = 4f,
                 notes = "Meatless Monday staple."
             ),
@@ -154,7 +149,7 @@ class SeedDatabaseCallback(
                     IngredientData("Italian seasoning", "1", "tbsp", "Spices"),
                     IngredientData("garlic powder", "1", "tsp", "Spices")
                 ),
-                listOf(tagMeat, tagMain, tagItalian, tagQuick),
+                listOf("Meat", "Main Dish", "Italian", "Quick"),
                 rating = 3.5f,
                 notes = "Easy cleanup. Use hot or mild sausage."
             ),
@@ -176,7 +171,7 @@ class SeedDatabaseCallback(
                     IngredientData("garlic cloves", "3", "", "Produce"),
                     IngredientData("jasmine rice", "2", "cups", "Pantry")
                 ),
-                listOf(tagVegetarian, tagMain, tagAsian, tagQuick),
+                listOf("Vegetarian", "Main Dish", "Asian", "Quick"),
                 rating = 3.5f,
                 notes = "Press tofu well for best texture."
             ),
@@ -194,13 +189,13 @@ class SeedDatabaseCallback(
                     IngredientData("garlic cloves, minced", "3", "", "Produce"),
                     IngredientData("yellow onion, diced", "1", "", "Produce")
                 ),
-                listOf(tagMeat, tagMain, tagPasta, tagItalian, tagComfort),
+                listOf("Meat", "Main Dish", "Pasta", "Italian", "Comfort Food"),
                 rating = 4.5f,
                 notes = "Can assemble ahead and refrigerate before baking."
             ),
             Recipe(
                 "Teriyaki Salmon Bowls",
-                "1. Marinate salmon in teriyaki sauce for 15 minutes.\n2. Bake salmon at 400°F for 12-15 minutes.\n3. Cook sushi rice according to package.\n4. Prepare toppings: edamame, cucumber, avocado, pickled ginger.\n5. Assemble bowls and drizzle with extra teriyaki and sriracha mayo.",
+                "1. Marinate salmon in teriyaki sauce for 15 minutes.\n2. Bake salmon at 400°F for 12-15 minutes.\n3. Cook sushi rice according to package.\n4. Prepare toppings: edamame, cucumber, avocado, pickled ginger.\n5. Assemble bowls and drizzle with extra teriyaki and sriracha mayor.",
                 5, 20, 15,
                 listOf(
                     IngredientData("salmon fillets", "5", "pieces", "Protein"),
@@ -213,7 +208,7 @@ class SeedDatabaseCallback(
                     IngredientData("sesame seeds", "2", "tbsp", "Pantry"),
                     IngredientData("sriracha mayo", "1/4", "cup", "Pantry")
                 ),
-                listOf(tagFish, tagMain, tagAsian),
+                listOf("Fish and Seafood", "Main Dish", "Asian"),
                 rating = 4f,
                 notes = "Kids love building their own bowls."
             ),
@@ -231,7 +226,7 @@ class SeedDatabaseCallback(
                     IngredientData("garlic cloves, minced", "4", "", "Produce"),
                     IngredientData("nutmeg", "1/4", "tsp", "Spices")
                 ),
-                listOf(tagVegetarian, tagMain, tagPasta, tagItalian, tagComfort, tagQuick),
+                listOf("Vegetarian", "Main Dish", "Pasta", "Italian", "Comfort Food", "Quick"),
                 rating = 4f,
                 notes = "Add grilled chicken for a non-vegetarian version."
             ),
@@ -249,7 +244,7 @@ class SeedDatabaseCallback(
                     IngredientData("brown sugar", "1", "tbsp", "Pantry"),
                     IngredientData("smoked paprika", "1", "tsp", "Spices")
                 ),
-                listOf(tagChicken, tagMain, tagComfort),
+                listOf("Chicken", "Main Dish", "Comfort Food"),
                 rating = 4f,
                 notes = "Set it and forget it. Great for busy days."
             ),
@@ -263,7 +258,7 @@ class SeedDatabaseCallback(
                     IngredientData("diced tomatoes", "14", "oz", "Canned"),
                     IngredientData("fresh spinach", "4", "cups", "Produce"),
                     IngredientData("yellow onion, diced", "1", "", "Produce"),
-                    IngredientData("garlic cloves", "3", "", "Produce"),
+                    IngredientData("garlic cloves, minced", "3", "", "Produce"),
                     IngredientData("fresh ginger", "1", "tbsp", "Produce"),
                     IngredientData("curry powder", "2", "tbsp", "Spices"),
                     IngredientData("turmeric", "1", "tsp", "Spices"),
@@ -271,7 +266,7 @@ class SeedDatabaseCallback(
                     IngredientData("basmati rice", "2", "cups", "Pantry"),
                     IngredientData("coconut oil", "2", "tbsp", "Pantry")
                 ),
-                listOf(tagVegetarian, tagMain, tagAsian, tagComfort),
+                listOf("Vegetarian", "Main Dish", "Asian", "Comfort Food"),
                 rating = 4.5f,
                 notes = "One of our go-to vegetarian meals. Double the curry powder for extra heat."
             ),
@@ -291,7 +286,7 @@ class SeedDatabaseCallback(
                     IngredientData("Parmesan, grated", "1/2", "cup", "Dairy"),
                     IngredientData("olive oil", "2", "tbsp", "Pantry")
                 ),
-                listOf(tagFish, tagMain, tagPasta, tagItalian, tagQuick),
+                listOf("Fish and Seafood", "Main Dish", "Pasta", "Italian", "Quick"),
                 rating = 4.5f,
                 notes = "Use dry white wine like Pinot Grigio."
             ),
@@ -309,7 +304,7 @@ class SeedDatabaseCallback(
                     IngredientData("salt", "1", "tsp", "Spices"),
                     IngredientData("black pepper", "1/2", "tsp", "Spices")
                 ),
-                listOf(tagVegetarian, tagSide, tagQuick),
+                listOf("Vegetarian", "Side Dish", "Quick"),
                 rating = 4f,
                 notes = "Don''t overcrowd the pan for best crispiness."
             ),
@@ -327,7 +322,7 @@ class SeedDatabaseCallback(
                     IngredientData("cilantro, chopped", "1/4", "cup", "Produce"),
                     IngredientData("cayenne pepper", "1/4", "tsp", "Spices")
                 ),
-                listOf(tagVegetarian, tagSide, tagMexican, tagQuick),
+                listOf("Vegetarian", "Side Dish", "Mexican", "Quick"),
                 rating = 4.5f,
                 notes = "Great summer side dish. Grilling the corn adds smokiness."
             ),
@@ -343,7 +338,7 @@ class SeedDatabaseCallback(
                     IngredientData("chives, chopped", "2", "tbsp", "Produce"),
                     IngredientData("salt", "2", "tsp", "Spices")
                 ),
-                listOf(tagVegetarian, tagSide, tagComfort),
+                listOf("Vegetarian", "Side Dish", "Comfort Food"),
                 rating = 4f,
                 notes = "Yukon Gold also works well. Keep cream warm to avoid lumps."
             ),
@@ -361,7 +356,7 @@ class SeedDatabaseCallback(
                     IngredientData("sesame seeds", "1", "tbsp", "Pantry"),
                     IngredientData("green onions, sliced", "2", "", "Produce")
                 ),
-                listOf(tagVegetarian, tagSide, tagAsian, tagQuick),
+                listOf("Vegetarian", "Side Dish", "Asian", "Quick"),
                 rating = 3.5f,
                 notes = "Refreshing side. Best served within an hour."
             ),
@@ -378,7 +373,7 @@ class SeedDatabaseCallback(
                     IngredientData("olive oil", "1", "tbsp", "Pantry"),
                     IngredientData("salt", "1", "tsp", "Spices")
                 ),
-                listOf(tagVegetarian, tagSide, tagMexican, tagQuick),
+                listOf("Vegetarian", "Side Dish", "Mexican", "Quick"),
                 rating = 4f,
                 notes = "Chipotle copycat. Goes with any Mexican main."
             ),
@@ -395,7 +390,7 @@ class SeedDatabaseCallback(
                     IngredientData("flaky sea salt", "1", "tsp", "Spices"),
                     IngredientData("cracked black pepper", "1/2", "tsp", "Spices")
                 ),
-                listOf(tagVegetarian, tagSide, tagItalian, tagQuick),
+                listOf("Vegetarian", "Side Dish", "Italian", "Quick"),
                 rating = 4f,
                 notes = "Use the ripest tomatoes you can find. Burrata is a great substitute."
             ),
@@ -412,7 +407,7 @@ class SeedDatabaseCallback(
                     IngredientData("salt", "1", "tsp", "Spices"),
                     IngredientData("black pepper", "1/2", "tsp", "Spices")
                 ),
-                listOf(tagVegetarian, tagSide),
+                listOf("Vegetarian", "Side Dish"),
                 rating = 3.5f,
                 notes = "Rainbow carrots make this dish extra colorful."
             )
@@ -421,30 +416,33 @@ class SeedDatabaseCallback(
         val now = System.currentTimeMillis()
 
         for (recipe in recipes) {
-            val recipeId = uuid()
+            val recipeId = UUID.randomUUID().toString()
 
             db.execSQL(
-                """INSERT INTO recipes (id, name, instructions, servings, prepTimeMinutes, cookTimeMinutes, imageUri, sourceUrl, rating, notes, isArchived, createdAt, updatedAt)
-                   VALUES ('$recipeId', '${recipe.name.esc()}', '${recipe.instructions.esc()}', ${recipe.servings}, ${recipe.prepMin}, ${recipe.cookMin}, NULL, '${recipe.sourceUrl.esc()}', ${recipe.rating}, '${recipe.notes.esc()}', 0, $now, $now)"""
+                """INSERT INTO recipes (id, name, instructions, servings, prepTimeMinutes, cookTimeMinutes, imageUri, sourceUrl, rating, isKidApproved, notes, isArchived, createdAt, updatedAt)
+                   VALUES ('$recipeId', '${recipe.name.esc()}', '${recipe.instructions.esc()}', ${recipe.servings}, ${recipe.prepMin}, ${recipe.cookMin}, NULL, '${recipe.sourceUrl.esc()}', ${recipe.rating}, 0, '${recipe.notes.esc()}', 0, $now, $now)"""
             )
 
             for (ing in recipe.ingredients) {
-                val ingId = uuid()
+                val ingId = UUID.randomUUID().toString()
                 db.execSQL(
                     """INSERT INTO ingredients (id, recipeId, name, quantity, unit, category)
                        VALUES ('$ingId', '$recipeId', '${ing.name.esc()}', '${ing.qty.esc()}', '${ing.unit.esc()}', '${ing.category.esc()}')"""
                 )
             }
 
-            for (tagId in recipe.tagIds) {
+            for (tagName in recipe.tagNames) {
+                // Find or create the tag ID
+                val existingTagId = tagIds[tagName] ?: UUID.randomUUID().toString().also { tagIds[tagName] = it }
+                db.execSQL("INSERT OR IGNORE INTO tags (id, name, color) VALUES ('$existingTagId', '$tagName', ${0xFF6750A4})")
+                
                 db.execSQL(
                     """INSERT OR IGNORE INTO recipe_tag_cross_ref (recipeId, tagId)
-                       VALUES ('$recipeId', '$tagId')"""
+                       VALUES ('$recipeId', '$existingTagId')"""
                 )
             }
         }
     }
 
-    private fun uuid() = UUID.randomUUID().toString()
     private fun String.esc() = this.replace("'", "''")
 }

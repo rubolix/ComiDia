@@ -67,14 +67,53 @@ class RecipeTagCrossRefTest {
 class MealSlotRecipeCrossRefTest {
 
     @Test
-    fun defaultSortOrder_isZero() {
+    fun defaultValues_areCorrect() {
         val ref = MealSlotRecipeCrossRef(mealSlotId = "s1", recipeId = "r1")
         assertEquals(0, ref.sortOrder)
+        assertFalse(ref.isLeftover)
+        assertFalse(ref.generatesLeftovers)
+        assertFalse(ref.fromFreezer)
+        assertNull(ref.servings)
     }
 
     @Test
-    fun sortOrder_canBeSet() {
-        val ref = MealSlotRecipeCrossRef(mealSlotId = "s1", recipeId = "r1", sortOrder = 3)
+    fun customValues_areRetained() {
+        val ref = MealSlotRecipeCrossRef(
+            mealSlotId = "s1",
+            recipeId = "r1",
+            sortOrder = 3,
+            isLeftover = true,
+            generatesLeftovers = true,
+            fromFreezer = true,
+            servings = 6
+        )
         assertEquals(3, ref.sortOrder)
+        assertTrue(ref.isLeftover)
+        assertTrue(ref.generatesLeftovers)
+        assertTrue(ref.fromFreezer)
+        assertEquals(6, ref.servings)
+    }
+}
+
+class MealSlotCustomEntryTest {
+
+    @Test
+    fun constructionWorks() {
+        val entry = MealSlotCustomEntry(
+            mealSlotId = "s1",
+            title = "Pizza",
+            type = "takeout",
+            isLeftover = true,
+            generatesLeftovers = false,
+            fromFreezer = false,
+            servings = 2
+        )
+        assertEquals("s1", entry.mealSlotId)
+        assertEquals("Pizza", entry.title)
+        assertEquals("takeout", entry.type)
+        assertTrue(entry.isLeftover)
+        assertFalse(entry.generatesLeftovers)
+        assertFalse(entry.fromFreezer)
+        assertEquals(2, entry.servings)
     }
 }

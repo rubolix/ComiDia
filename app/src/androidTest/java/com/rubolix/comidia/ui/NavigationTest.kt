@@ -17,14 +17,14 @@ class NavigationTest {
     val composeTestRule = createComposeRule()
 
     @Test
-    fun bottomNavItems_hasFourTabs() {
-        assertEquals(4, bottomNavItems.size)
+    fun bottomNavItems_hasThreeTabs() {
+        assertEquals(3, bottomNavItems.size)
     }
 
     @Test
     fun bottomNavItems_hasCorrectLabels() {
         val labels = bottomNavItems.map { it.label }
-        assertEquals(listOf("Menu", "Calendar", "Recipes", "Ingredients"), labels)
+        assertEquals(listOf("Menu", "Recipes", "Ingredients"), labels)
     }
 
     @Test
