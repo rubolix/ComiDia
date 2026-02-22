@@ -24,6 +24,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import android.content.Intent
 import androidx.compose.ui.platform.LocalContext
 import com.rubolix.comidia.data.local.entity.ShoppingItem
+import com.rubolix.comidia.ui.components.DialogUnderlay
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -100,75 +101,80 @@ fun IngredientsScreen(
     ) { padding ->
         val context = LocalContext.current
         
-        Column(modifier = Modifier.padding(padding)) {
-            // Week navigation controls
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.padding(padding)) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    IconButton(onClick = { viewModel.previousWeek() }) {
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Previous Week")
+                    Row(
+                        modifier = Modifier.padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { viewModel.previousWeek() }) {
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Previous Week")
+                        }
+                        Text(
+                            text = weekStart.format(DateTimeFormatter.ofPattern("MMM d")) + " - " + weekStart.plusDays(6).format(DateTimeFormatter.ofPattern("MMM d")),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        IconButton(onClick = { viewModel.nextWeek() }) {
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Next Week")
+                        }
                     }
-                    Text(
-                        text = weekStart.format(DateTimeFormatter.ofPattern("MMM d")) + " - " + weekStart.plusDays(6).format(DateTimeFormatter.ofPattern("MMM d")),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    )
-                    IconButton(onClick = { viewModel.nextWeek() }) {
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Next Week")
+                }
+
+                if (groupedIngredients.isEmpty() && removedIngredients.isEmpty()) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("No ingredients for this week.", style = MaterialTheme.typography.bodyLarge)
+                    }
+                } else {
+                    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 80.dp)) {
+                        groupedIngredients.forEach { (category, items) ->
+                            item {
+                                Text(
+                                    category,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
+                                )
+                            }
+                            items(items, key = { it.name }) { item ->
+                                IngredientListItem(
+                                    item = item,
+                                    isEditMode = isEditMode,
+                                    onToggleDoNotBuy = { viewModel.toggleDoNotBuy(item) },
+                                    onToggleNeedsChecking = { viewModel.toggleNeedsChecking(item) },
+                                    onRemove = { viewModel.removeIngredient(item) }
+                                )
+                            }
+                        }
+
+                        if (isEditMode && removedIngredients.isNotEmpty()) {
+                            item {
+                                Spacer(Modifier.height(24.dp))
+                                HorizontalDivider()
+                                Text(
+                                    "Removed Ingredients",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }
+                            items(removedIngredients, key = { "removed|" + it.name }) { item ->
+                                RemovedIngredientListItem(item = item, onRestore = { viewModel.restoreIngredient(item) })
+                            }
+                        }
                     }
                 }
             }
 
-            if (groupedIngredients.isEmpty() && removedIngredients.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No ingredients for this week.", style = MaterialTheme.typography.bodyLarge)
-                }
-            } else {
-                LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 80.dp)) {
-                    groupedIngredients.forEach { (category, items) ->
-                        item {
-                            Text(
-                                category,
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
-                            )
-                        }
-                        items(items, key = { it.name }) { item ->
-                            IngredientListItem(
-                                item = item,
-                                isEditMode = isEditMode,
-                                onToggleDoNotBuy = { viewModel.toggleDoNotBuy(item) },
-                                onToggleNeedsChecking = { viewModel.toggleNeedsChecking(item) },
-                                onRemove = { viewModel.removeIngredient(item) }
-                            )
-                        }
-                    }
-
-                    if (isEditMode && removedIngredients.isNotEmpty()) {
-                        item {
-                            Spacer(Modifier.height(24.dp))
-                            HorizontalDivider()
-                            Text(
-                                "Removed Ingredients",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(16.dp)
-                            )
-                        }
-                        items(removedIngredients, key = { "removed|" + it.name }) { item ->
-                            RemovedIngredientListItem(item = item, onRestore = { viewModel.restoreIngredient(item) })
-                        }
-                    }
-                }
+            if (showAddDialog) {
+                DialogUnderlay(onDismiss = { showAddDialog = false })
             }
         }
     }

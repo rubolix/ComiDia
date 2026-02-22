@@ -28,9 +28,10 @@ import com.rubolix.comidia.data.local.entity.*
         UserIngredientPreference::class,
         StapleEntity::class,
         WeekMetadata::class,
-        ManualIngredientEntity::class
+        ManualIngredientEntity::class,
+        CategorySmartRuleEntity::class
     ],
-    version = 15,
+    version = 19,
     exportSchema = false
 )
 abstract class ComiDiaDatabase : RoomDatabase() {

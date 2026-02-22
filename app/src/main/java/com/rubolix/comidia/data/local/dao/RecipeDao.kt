@@ -48,28 +48,28 @@ interface RecipeDao {
     @Update
     suspend fun updateRecipe(recipe: RecipeEntity)
 
-    @Delete
-    suspend fun deleteRecipe(recipe: RecipeEntity)
-
     @Query("DELETE FROM recipes WHERE id = :id")
     suspend fun deleteRecipeById(id: String)
 
-    @Query("UPDATE recipes SET isArchived = :archived, updatedAt = :now WHERE id = :id")
-    suspend fun setArchived(id: String, archived: Boolean, now: Long = System.currentTimeMillis())
-
-    // Ingredients
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertIngredient(ingredient: IngredientEntity)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertIngredients(ingredients: List<IngredientEntity>)
+    @Query("UPDATE recipes SET isArchived = :isArchived WHERE id = :id")
+    suspend fun setArchived(id: String, isArchived: Boolean)
 
     @Query("DELETE FROM ingredients WHERE recipeId = :recipeId")
     suspend fun deleteIngredientsForRecipe(recipeId: String)
 
-    // Tags
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertIngredients(ingredients: List<IngredientEntity>)
+
     @Query("SELECT * FROM tags ORDER BY name ASC")
     fun getAllTags(): Flow<List<TagEntity>>
+
+    @Query("""
+        SELECT t.* FROM tags t
+        LEFT JOIN recipe_tag_cross_ref ref ON t.id = ref.tagId
+        GROUP BY t.id
+        ORDER BY COUNT(ref.recipeId) DESC, t.name ASC
+    """)
+    fun getMostFrequentTags(): Flow<List<TagEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTag(tag: TagEntity)
@@ -90,14 +90,26 @@ interface RecipeDao {
     @Query("SELECT * FROM recipe_categories ORDER BY sortOrder ASC, name ASC")
     fun getAllCategories(): Flow<List<RecipeCategoryEntity>>
 
+    @Query("SELECT * FROM recipe_categories WHERE parentId IS NULL ORDER BY sortOrder ASC")
+    fun getRootCategories(): Flow<List<RecipeCategoryEntity>>
+
+    @Query("SELECT * FROM recipe_categories WHERE parentId = :parentId ORDER BY sortOrder ASC")
+    fun getSubcategories(parentId: String): Flow<List<RecipeCategoryEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCategory(category: RecipeCategoryEntity)
+
+    @Update
+    suspend fun updateCategory(category: RecipeCategoryEntity)
 
     @Delete
     suspend fun deleteCategory(category: RecipeCategoryEntity)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertRecipeCategoryCrossRef(crossRef: RecipeCategoryCrossRef)
+
+    @Query("DELETE FROM recipe_category_cross_ref WHERE recipeId = :recipeId AND categoryId = :categoryId")
+    suspend fun removeRecipeFromCategory(recipeId: String, categoryId: String)
 
     @Query("DELETE FROM recipe_category_cross_ref WHERE recipeId = :recipeId")
     suspend fun deleteAllCategoriesForRecipe(recipeId: String)
@@ -112,14 +124,50 @@ interface RecipeDao {
         insertRecipe(recipe)
         deleteIngredientsForRecipe(recipe.id)
         insertIngredients(ingredients)
+        
         deleteAllTagsForRecipe(recipe.id)
-        tagIds.forEach { tagId ->
-            insertRecipeTagCrossRef(RecipeTagCrossRef(recipe.id, tagId))
-        }
+        tagIds.forEach { tid -> insertRecipeTagCrossRef(RecipeTagCrossRef(recipe.id, tid)) }
+        
         deleteAllCategoriesForRecipe(recipe.id)
-        categoryIds.forEach { catId ->
-            insertRecipeCategoryCrossRef(RecipeCategoryCrossRef(recipe.id, catId))
+        
+        // Manual categories
+        categoryIds.forEach { cid -> insertRecipeCategoryCrossRef(RecipeCategoryCrossRef(recipe.id, cid)) }
+        
+        // Auto-categorization from tags
+        val autoCatIds = getCategoryIdsForTags(tagIds)
+        val existingCatIds = getAllCategoryIds()
+        autoCatIds.filter { it in existingCatIds }.forEach { cid -> 
+            insertRecipeCategoryCrossRef(RecipeCategoryCrossRef(recipe.id, cid)) 
         }
+    }
+
+    @Query("SELECT id FROM recipe_categories")
+    suspend fun getAllCategoryIds(): List<String>
+
+    @Query("SELECT categoryId FROM tags WHERE id IN (:tagIds) AND categoryId IS NOT NULL")
+    suspend fun getCategoryIdsForTags(tagIds: List<String>): List<String>
+
+    // Smart Rules
+    @Query("SELECT * FROM category_smart_rules WHERE categoryId = :categoryId LIMIT 1")
+    fun getSmartRuleForCategory(categoryId: String): Flow<CategorySmartRuleEntity?>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSmartRule(rule: CategorySmartRuleEntity)
+
+    @Update
+    suspend fun updateSmartRule(rule: CategorySmartRuleEntity)
+
+    @Query("DELETE FROM category_smart_rules WHERE categoryId = :categoryId")
+    suspend fun deleteSmartRuleForCategory(categoryId: String)
+
+    @Transaction
+    suspend fun batchAddRecipesToCategory(recipeIds: List<String>, categoryId: String) {
+        recipeIds.forEach { rid -> insertRecipeCategoryCrossRef(RecipeCategoryCrossRef(rid, categoryId)) }
+    }
+
+    @Transaction
+    suspend fun batchRemoveRecipesFromCategory(recipeIds: List<String>, categoryId: String) {
+        recipeIds.forEach { rid -> removeRecipeFromCategory(rid, categoryId) }
     }
 
     // Copy a recipe
@@ -155,8 +203,6 @@ interface RecipeDao {
 
     @Transaction
     suspend fun updateTagLinksForRecipes(tagId: String, recipeIds: Set<String>) {
-        // We only add the tag to these recipes, we don't remove it from others 
-        // because the user said "can be added manually, but should ALSO be prepopulated"
         recipeIds.forEach { rid ->
             insertRecipeTagCrossRef(RecipeTagCrossRef(rid, tagId))
         }

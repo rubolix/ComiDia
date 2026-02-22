@@ -1,29 +1,31 @@
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+
 package com.rubolix.comidia.ui.screens.recipes
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.StarBorder
-import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.rubolix.comidia.data.local.entity.TagEntity
+import com.rubolix.comidia.data.local.entity.RecipeCategoryEntity
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import com.rubolix.comidia.ui.components.DialogUnderlay
+import com.rubolix.comidia.ui.components.CategoryNode
+import com.rubolix.comidia.ui.components.CategoryTreeUtils
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecipeEditScreen(
     onNavigateBack: () -> Unit,
@@ -31,7 +33,8 @@ fun RecipeEditScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val allTags by viewModel.allTags.collectAsState()
-    var showNewTagDialog by remember { mutableStateOf(false) }
+    val frequentTags by viewModel.mostFrequentTags.collectAsState()
+    val allCategories by viewModel.allCategories.collectAsState()
 
     Scaffold(
         topBar = {
@@ -39,279 +42,348 @@ fun RecipeEditScreen(
                 title = { Text(if (state.isNew) "New Recipe" else "Edit Recipe") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = { viewModel.save(onNavigateBack) },
-                        enabled = state.name.isNotBlank() && !state.isSaving
-                    ) {
-                        Icon(Icons.Default.Check, contentDescription = "Save")
+                    if (state.isSaving) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    } else {
+                        IconButton(onClick = { viewModel.save(onNavigateBack) }) {
+                            Icon(Icons.Default.Save, "Save")
+                        }
                     }
                 }
             )
         }
     ) { padding ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(vertical = 16.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Recipe name
-            item {
-                OutlinedTextField(
-                    value = state.name,
-                    onValueChange = viewModel::updateName,
-                    label = { Text("Recipe name") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-            }
+            OutlinedTextField(
+                value = state.name,
+                onValueChange = viewModel::updateName,
+                label = { Text("Recipe Name") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
 
-            // Times & servings row
-            item {
+            // Hierarchical Categories Section
+            CategorySelectionSection(
+                selectedCategoryIds = state.selectedCategoryIds,
+                allCategories = allCategories,
+                onToggleCategory = viewModel::toggleCategory
+            )
+
+            // Tags Section
+            TagManagementSection(
+                selectedTagIds = state.selectedTagIds,
+                allTags = allTags,
+                frequentTags = frequentTags,
+                onToggleTag = viewModel::toggleTag,
+                onCreateTag = viewModel::createTag
+            )
+
+            // Ingredients
+            Text("Ingredients", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            state.ingredients.forEachIndexed { index, ing ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = state.prepTimeMinutes,
-                        onValueChange = viewModel::updatePrepTime,
-                        label = { Text("Prep (min)") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
-                    OutlinedTextField(
-                        value = state.cookTimeMinutes,
-                        onValueChange = viewModel::updateCookTime,
-                        label = { Text("Cook (min)") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
-                    OutlinedTextField(
-                        value = state.servings,
-                        onValueChange = viewModel::updateServings,
-                        label = { Text("Servings") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
-                }
-            }
-
-            // Tags
-            item {
-                Text("Tags", style = MaterialTheme.typography.titleSmall)
-                Spacer(modifier = Modifier.height(4.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(allTags) { tag ->
-                        FilterChip(
-                            selected = tag.id in state.selectedTagIds,
-                            onClick = { viewModel.toggleTag(tag.id) },
-                            label = { Text(tag.name) }
-                        )
-                    }
-                    item {
-                        AssistChip(
-                            onClick = { showNewTagDialog = true },
-                            label = { Text("+ New tag") }
-                        )
-                    }
-                }
-            }
-
-            // Star rating
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        Text("Rating", style = MaterialTheme.typography.titleSmall)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row {
-                            repeat(5) { i ->
-                                IconButton(onClick = {
-                                    viewModel.updateRating(if (state.rating == (i + 1).toFloat()) 0f else (i + 1).toFloat())
-                                }, modifier = Modifier.size(36.dp)) {
-                                    Icon(
-                                        if (i < state.rating.toInt()) Icons.Default.Star else Icons.Default.StarBorder,
-                                        contentDescription = "Rate ${i + 1}",
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Kid Approved", style = MaterialTheme.typography.labelSmall)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        IconToggleButton(
-                            checked = state.isKidApproved,
-                            onCheckedChange = viewModel::updateKidApproved
-                        ) {
-                            Icon(
-                                imageVector = if (state.isKidApproved) Icons.Default.Face else Icons.Default.Face,
-                                contentDescription = "Kid Approved",
-                                tint = if (state.isKidApproved) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                                modifier = Modifier.size(32.dp)
-                            )
-                        }
+                    OutlinedTextField(
+                        value = ing.quantity,
+                        onValueChange = { viewModel.updateIngredient(index, ing.copy(quantity = it)) },
+                        label = { Text("Qty") },
+                        modifier = Modifier.weight(0.2f)
+                    )
+                    OutlinedTextField(
+                        value = ing.unit,
+                        onValueChange = { viewModel.updateIngredient(index, ing.copy(unit = it)) },
+                        label = { Text("Unit") },
+                        modifier = Modifier.weight(0.3f)
+                    )
+                    OutlinedTextField(
+                        value = ing.name,
+                        onValueChange = { viewModel.updateIngredient(index, ing.copy(name = it)) },
+                        label = { Text("Name") },
+                        modifier = Modifier.weight(0.5f)
+                    )
+                    IconButton(onClick = { viewModel.removeIngredient(index) }) {
+                        Icon(Icons.Default.RemoveCircleOutline, "Remove", tint = MaterialTheme.colorScheme.error)
                     }
                 }
             }
-
-            // Source URL
-            item {
-                OutlinedTextField(
-                    value = state.sourceUrl,
-                    onValueChange = viewModel::updateSourceUrl,
-                    label = { Text("Source URL (optional)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-            }
-
-            // Ingredients section
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Ingredients", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                    TextButton(onClick = viewModel::addIngredient) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Add")
-                    }
-                }
-            }
-
-            itemsIndexed(state.ingredients) { index, ingredient ->
-                IngredientRow(
-                    ingredient = ingredient,
-                    onUpdate = { viewModel.updateIngredient(index, it) },
-                    onRemove = { viewModel.removeIngredient(index) },
-                    canRemove = state.ingredients.size > 1
-                )
+            TextButton(onClick = viewModel::addIngredient) {
+                Icon(Icons.Default.Add, null)
+                Text("Add Ingredient")
             }
 
             // Instructions
-            item {
-                OutlinedTextField(
-                    value = state.instructions,
-                    onValueChange = viewModel::updateInstructions,
-                    label = { Text("Instructions") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 150.dp),
-                    maxLines = 10
-                )
-            }
-
-            // Notes
-            item {
-                OutlinedTextField(
-                    value = state.notes,
-                    onValueChange = viewModel::updateNotes,
-                    label = { Text("Notes (optional)") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 80.dp),
-                    maxLines = 5
-                )
-            }
-        }
-    }
-
-    if (showNewTagDialog) {
-        NewTagDialog(
-            onDismiss = { showNewTagDialog = false },
-            onCreate = { name ->
-                viewModel.createTag(name)
-                showNewTagDialog = false
-            }
-        )
-    }
-}
-
-@Composable
-private fun IngredientRow(
-    ingredient: IngredientInput,
-    onUpdate: (IngredientInput) -> Unit,
-    onRemove: () -> Unit,
-    canRemove: Boolean
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        OutlinedTextField(
-            value = ingredient.name,
-            onValueChange = { onUpdate(ingredient.copy(name = it)) },
-            label = { Text("Ingredient") },
-            modifier = Modifier.weight(2f),
-            singleLine = true
-        )
-        OutlinedTextField(
-            value = ingredient.quantity,
-            onValueChange = { onUpdate(ingredient.copy(quantity = it)) },
-            label = { Text("Qty") },
-            modifier = Modifier.weight(1f),
-            singleLine = true
-        )
-        OutlinedTextField(
-            value = ingredient.unit,
-            onValueChange = { onUpdate(ingredient.copy(unit = it)) },
-            label = { Text("Unit") },
-            modifier = Modifier.weight(1f),
-            singleLine = true
-        )
-        if (canRemove) {
-            IconButton(onClick = onRemove) {
-                Icon(Icons.Default.Close, contentDescription = "Remove")
-            }
-        }
-    }
-}
-
-@Composable
-private fun NewTagDialog(
-    onDismiss: () -> Unit,
-    onCreate: (String) -> Unit
-) {
-    var tagName by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("New Tag") },
-        text = {
             OutlinedTextField(
-                value = tagName,
-                onValueChange = { tagName = it },
-                label = { Text("Tag name") },
-                singleLine = true
+                value = state.instructions,
+                onValueChange = viewModel::updateInstructions,
+                label = { Text("Instructions") },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp)
             )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onCreate(tagName) },
-                enabled = tagName.isNotBlank()
-            ) { Text("Create") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+
+            // Times & Servings
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = state.prepTimeMinutes,
+                    onValueChange = viewModel::updatePrepTime,
+                    label = { Text("Prep (min)") },
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = state.cookTimeMinutes,
+                    onValueChange = viewModel::updateCookTime,
+                    label = { Text("Cook (min)") },
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = state.servings,
+                    onValueChange = viewModel::updateServings,
+                    label = { Text("Servings") },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            OutlinedTextField(
+                value = state.sourceUrl,
+                onValueChange = viewModel::updateSourceUrl,
+                label = { Text("Source URL") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = state.notes,
+                onValueChange = viewModel::updateNotes,
+                label = { Text("Notes") },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp)
+            )
         }
-    )
+    }
+}
+
+@Composable
+private fun CategorySelectionSection(
+    selectedCategoryIds: Set<String>,
+    allCategories: List<RecipeCategoryEntity>,
+    onToggleCategory: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val tree = remember(allCategories) { CategoryTreeUtils.buildTree(allCategories) }
+
+    Column {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.clickable { expanded = !expanded }.fillMaxWidth()
+        ) {
+            Text("Categories", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            if (selectedCategoryIds.isNotEmpty()) {
+                Text("${selectedCategoryIds.size} selected", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(8.dp))
+            }
+            Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
+        }
+
+        if (expanded) {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            ) {
+                Column(modifier = Modifier.padding(8.dp)) {
+                    tree.forEach { node ->
+                        CategorySelectionItem(node, 0, selectedCategoryIds, onToggleCategory)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CategorySelectionItem(
+    node: CategoryNode,
+    depth: Int,
+    selectedIds: Set<String>,
+    onToggle: (String) -> Unit
+) {
+    var isNodeExpanded by remember { mutableStateOf(false) }
+    val isSelected = node.category.id in selectedIds
+
+    Column(modifier = Modifier.padding(start = (depth * 12).dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 32.dp)
+        ) {
+            if (node.children.isNotEmpty()) {
+                IconButton(onClick = { isNodeExpanded = !isNodeExpanded }, modifier = Modifier.size(24.dp)) {
+                    Icon(if (isNodeExpanded) Icons.Default.ArrowDropDown else Icons.Default.ArrowRight, null)
+                }
+            } else {
+                Spacer(Modifier.size(24.dp))
+            }
+            
+            Checkbox(
+                checked = isSelected,
+                onCheckedChange = { onToggle(node.category.id) },
+                modifier = Modifier.scale(0.8f)
+            )
+            Text(
+                text = node.category.name,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.clickable { onToggle(node.category.id) }.weight(1f)
+            )
+        }
+        if (isNodeExpanded) {
+            node.children.forEach { child ->
+                CategorySelectionItem(child, depth + 1, selectedIds, onToggle)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TagManagementSection(
+    selectedTagIds: Set<String>,
+    allTags: List<TagEntity>,
+    frequentTags: List<TagEntity>,
+    onToggleTag: (String) -> Unit,
+    onCreateTag: (String) -> Unit
+) {
+    var tagInput by remember { mutableStateOf("") }
+    var expanded by remember { mutableStateOf(false) }
+
+    val filteredSuggestions by remember(tagInput, selectedTagIds, allTags) {
+        derivedStateOf {
+            if (tagInput.isBlank()) emptyList()
+            else allTags.filter { 
+                it.name.contains(tagInput, ignoreCase = true) && it.id !in selectedTagIds 
+            }
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Tags", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            selectedTagIds.forEach { id ->
+                allTags.find { it.id == id }?.let { tag ->
+                    InputChip(
+                        selected = true,
+                        onClick = { onToggleTag(id) },
+                        label = { Text(tag.name) },
+                        trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(12.dp)) }
+                    )
+                }
+            }
+        }
+
+        ExposedDropdownMenuBox(
+            expanded = expanded && filteredSuggestions.isNotEmpty(),
+            onExpandedChange = { expanded = it },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            OutlinedTextField(
+                value = tagInput,
+                onValueChange = { 
+                    tagInput = it
+                    expanded = it.isNotBlank()
+                },
+                label = { Text("Add tag...") },
+                modifier = Modifier.fillMaxWidth().menuAnchor(),
+                trailingIcon = {
+                    if (tagInput.isNotBlank()) {
+                        IconButton(onClick = {
+                            if (allTags.none { it.name.equals(tagInput, true) }) {
+                                onCreateTag(tagInput)
+                            } else {
+                                allTags.find { it.name.equals(tagInput, true) }?.let { onToggleTag(it.id) }
+                            }
+                            tagInput = ""
+                            expanded = false
+                        }) {
+                            Icon(Icons.Default.Add, null)
+                        }
+                    }
+                }
+            )
+            ExposedDropdownMenu(
+                expanded = expanded && filteredSuggestions.isNotEmpty(),
+                onDismissRequest = { expanded = false }
+            ) {
+                filteredSuggestions.forEach { tag ->
+                    DropdownMenuItem(
+                        text = { Text(tag.name) },
+                        onClick = {
+                            onToggleTag(tag.id)
+                            tagInput = ""
+                            expanded = false
+                        },
+                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                    )
+                }
+            }
+        }
+
+        val mealTags = listOf("Dinner", "Lunch", "Breakfast", "Snack", "Beverage", "Dessert")
+        val typeTags = listOf("Main Dish", "Side Dish", "Protein", "Vegetarian", "Vegan", "Comfort Food", "Family Staple", "Fish and Seafood", "Meat", "Pasta", "Sweet")
+        val otherTags = listOf("Prep Ahead", "Batch Cooking", "Quick", "Special Meal")
+
+        TagRow("Meal", mealTags, frequentTags, selectedTagIds, onToggleTag, onCreateTag)
+        TagRow("Type", typeTags, frequentTags, selectedTagIds, onToggleTag, onCreateTag)
+        TagRow("Considerations", otherTags, frequentTags, selectedTagIds, onToggleTag, onCreateTag)
+    }
+}
+
+@Composable
+private fun TagRow(
+    title: String,
+    tagNames: List<String>,
+    frequentTags: List<TagEntity>,
+    selectedTagIds: Set<String>,
+    onToggleTag: (String) -> Unit,
+    onCreateTag: (String) -> Unit
+) {
+    val sortedTagNames = tagNames.sortedByDescending { name ->
+        frequentTags.find { it.name.equals(name, true) }?.let { tag ->
+            frequentTags.indexOf(tag).takeIf { it != -1 }?.let { 1000 - it } ?: 0
+        } ?: 0
+    }
+
+    Column {
+        Text(title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+        LazyRow(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(sortedTagNames) { name ->
+                val existingTag = frequentTags.find { it.name.equals(name, true) }
+                val isSelected = existingTag?.let { it.id in selectedTagIds } ?: false
+                
+                FilterChip(
+                    selected = isSelected,
+                    onClick = {
+                        if (existingTag != null) {
+                            onToggleTag(existingTag.id)
+                        } else {
+                            onCreateTag(name)
+                        }
+                    },
+                    label = { Text(name) }
+                )
+            }
+        }
+    }
 }

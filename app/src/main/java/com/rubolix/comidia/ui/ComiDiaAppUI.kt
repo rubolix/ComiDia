@@ -2,11 +2,12 @@
 
 package com.rubolix.comidia.ui
 
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -19,6 +20,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.automirrored.filled.MenuOpen
 import com.rubolix.comidia.ui.navigation.Screen
 import com.rubolix.comidia.ui.navigation.bottomNavItems
 import com.rubolix.comidia.ui.screens.calendar.CalendarScreen
@@ -30,6 +33,8 @@ import com.rubolix.comidia.ui.screens.mealplan.MenuScreen
 import com.rubolix.comidia.ui.screens.recipes.RecipeDetailScreen
 import com.rubolix.comidia.ui.screens.recipes.RecipeEditScreen
 import com.rubolix.comidia.ui.screens.recipes.RecipeListScreen
+import com.rubolix.comidia.ui.screens.recipes.RecipeCategoryScreen
+import com.rubolix.comidia.ui.screens.recipes.CategoryRecipesScreen
 import com.rubolix.comidia.ui.screens.settings.SettingsScreen
 import kotlinx.coroutines.launch
 
@@ -44,17 +49,33 @@ fun ComiDiaAppUI() {
     val shoppingViewModel: ShoppingListViewModel = hiltViewModel()
     val isShoppingInProgress by shoppingViewModel.isShoppingInProgress.collectAsState()
 
-    val isMainView = currentDestination?.route in listOf(
+    val isMainView = currentDestination?.route?.split("?")?.firstOrNull() in listOf(
         Screen.Menu.route,
         Screen.RecipeList.route,
         Screen.Ingredients.route
     )
 
+    BackHandler(enabled = drawerState.isOpen) {
+        scope.launch { drawerState.close() }
+    }
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                Text("ComiDia", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { scope.launch { drawerState.close() } }) {
+                        Icon(Icons.AutoMirrored.Filled.MenuOpen, "Close Menu")
+                    }
+                    Text(
+                        "ComiDia", 
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.padding(start = 12.dp)
+                    )
+                }
                 NavigationDrawerItem(
                     label = { Text("Menu") },
                     selected = currentDestination?.hierarchy?.any { it.route == Screen.Menu.route } == true,
@@ -70,7 +91,7 @@ fun ComiDiaAppUI() {
                 )
                 NavigationDrawerItem(
                     label = { Text("Recipes") },
-                    selected = currentDestination?.hierarchy?.any { it.route == Screen.RecipeList.route } == true,
+                    selected = currentDestination?.hierarchy?.any { it.route?.startsWith(Screen.RecipeList.route) == true } == true,
                     onClick = {
                         navController.navigate(Screen.RecipeList.route) {
                             popUpTo(navController.graph.findStartDestination().id) { saveState = true }
@@ -93,6 +114,15 @@ fun ComiDiaAppUI() {
                         scope.launch { drawerState.close() }
                     },
                     icon = { Icon(Icons.Default.ShoppingCart, null) }
+                )
+                NavigationDrawerItem(
+                    label = { Text("Categories") },
+                    selected = currentDestination?.hierarchy?.any { it.route == Screen.ManageCategories.route } == true,
+                    onClick = {
+                        navController.navigate(Screen.ManageCategories.route)
+                        scope.launch { drawerState.close() }
+                    },
+                    icon = { Icon(Icons.Default.Category, null) }
                 )
                 HorizontalDivider()
                 NavigationDrawerItem(
@@ -118,15 +148,16 @@ fun ComiDiaAppUI() {
     ) {
         Scaffold(
             topBar = {
-                // Common Top Bar for Main Views
                 if (isMainView) {
                     CenterAlignedTopAppBar(
                         title = { 
+                            val route = currentDestination?.route?.split("?")?.firstOrNull()
                             Text(
-                                when (currentDestination?.route) {
+                                when (route) {
                                     Screen.Menu.route -> "Meal Plan"
                                     Screen.RecipeList.route -> "Recipes"
                                     Screen.Ingredients.route -> "Ingredients"
+                                    Screen.ManageCategories.route -> "Categories"
                                     else -> "ComiDia"
                                 }
                             )
@@ -157,7 +188,7 @@ fun ComiDiaAppUI() {
                 if (isMainView) {
                     NavigationBar {
                         bottomNavItems.forEach { item ->
-                            val selected = currentDestination?.hierarchy?.any { it.route == item.screen.route } == true
+                            val selected = currentDestination?.hierarchy?.any { it.route?.startsWith(item.screen.route) == true } == true
                             NavigationBarItem(
                                 selected = selected,
                                 onClick = {
@@ -189,7 +220,10 @@ fun ComiDiaAppUI() {
             ) {
                 composable(Screen.Menu.route) {
                     MenuScreen(
-                        onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
+                        navController = navController,
+                        onNavigateToRecipeEdit = { id ->
+                            navController.navigate(Screen.RecipeEdit.createRoute(id))
+                        }
                     )
                 }
                 composable(Screen.Calendar.route) {
@@ -200,8 +234,11 @@ fun ComiDiaAppUI() {
                         onNavigateToRecipe = { id ->
                             navController.navigate(Screen.RecipeDetail.createRoute(id))
                         },
-                        onNavigateToNewRecipe = {
-                            navController.navigate(Screen.RecipeEdit.createRoute("new"))
+                        onNavigateToNewRecipe = { catId ->
+                            navController.navigate(Screen.RecipeEdit.createRoute("new", catId))
+                        },
+                        onNavigateToManageCategories = {
+                            navController.navigate(Screen.ManageCategories.route)
                         }
                     )
                 }
@@ -218,7 +255,14 @@ fun ComiDiaAppUI() {
                 }
                 composable(
                     Screen.RecipeEdit.route,
-                    arguments = listOf(navArgument("recipeId") { type = NavType.StringType })
+                    arguments = listOf(
+                        navArgument("recipeId") { type = NavType.StringType },
+                        navArgument("initialCategoryId") { 
+                            type = NavType.StringType
+                            nullable = true
+                            defaultValue = null
+                        }
+                    )
                 ) {
                     RecipeEditScreen(onNavigateBack = { navController.popBackStack() })
                 }
@@ -233,6 +277,20 @@ fun ComiDiaAppUI() {
                 }
                 composable(Screen.Staples.route) {
                     StaplesScreen(onNavigateBack = { navController.popBackStack() })
+                }
+                composable(Screen.ManageCategories.route) {
+                    RecipeCategoryScreen(
+                        onNavigateBack = { navController.popBackStack() },
+                        onNavigateToCategoryRecipes = { id ->
+                            navController.navigate(Screen.CategoryRecipes.createRoute(id))
+                        }
+                    )
+                }
+                composable(
+                    Screen.CategoryRecipes.route,
+                    arguments = listOf(navArgument("categoryId") { type = NavType.StringType })
+                ) {
+                    CategoryRecipesScreen(onNavigateBack = { navController.popBackStack() })
                 }
                 composable(Screen.Settings.route) {
                     SettingsScreen(

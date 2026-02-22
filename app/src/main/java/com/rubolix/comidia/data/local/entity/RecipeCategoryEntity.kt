@@ -11,6 +11,7 @@ data class RecipeCategoryEntity(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
     val name: String,
+    val parentId: String? = null,
     val sortOrder: Int = 0
 )
 
@@ -25,5 +26,6 @@ data class RecipeCategoryEntity(
 )
 data class RecipeCategoryCrossRef(
     val recipeId: String,
-    val categoryId: String
+    val categoryId: String,
+    val addedAt: Long = System.currentTimeMillis()
 )

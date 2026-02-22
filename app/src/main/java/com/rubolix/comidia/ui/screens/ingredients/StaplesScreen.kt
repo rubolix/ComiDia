@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.rubolix.comidia.data.local.entity.StapleEntity
+import com.rubolix.comidia.ui.components.DialogUnderlay
 
 @Composable
 fun StaplesScreen(
@@ -56,35 +57,41 @@ fun StaplesScreen(
     ) { padding ->
         val grouped = staples.groupBy { it.category.ifBlank { "Uncategorized" } }
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            grouped.forEach { (category, items) ->
-                item {
-                    Text(category, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                grouped.forEach { (category, items) ->
+                    item {
+                        Text(category, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+                    }
+                    items(items, key = { it.id }) { staple ->
+                        StapleListItem(
+                            staple = staple,
+                            isEditMode = isEditMode,
+                            onToggleDoNotBuy = { viewModel.toggleDoNotBuy(staple) },
+                            onToggleNeedsChecking = { viewModel.toggleNeedsChecking(staple) },
+                            onRemove = { viewModel.removeStaple(staple) }
+                        )
+                    }
                 }
-                items(items, key = { it.id }) { staple ->
-                    StapleListItem(
-                        staple = staple,
-                        isEditMode = isEditMode,
-                        onToggleDoNotBuy = { viewModel.toggleDoNotBuy(staple) },
-                        onToggleNeedsChecking = { viewModel.toggleNeedsChecking(staple) },
-                        onRemove = { viewModel.removeStaple(staple) }
-                    )
+
+                if (isEditMode && removedStaples.isNotEmpty()) {
+                    item {
+                        Spacer(Modifier.height(24.dp))
+                        HorizontalDivider()
+                        Text("Removed Staples", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(vertical = 12.dp))
+                    }
+                    items(removedStaples, key = { "removed|" + it.id }) { staple ->
+                        RemovedStapleListItem(staple = staple, onRestore = { viewModel.restoreStaple(staple) })
+                    }
                 }
             }
 
-            if (isEditMode && removedStaples.isNotEmpty()) {
-                item {
-                    Spacer(Modifier.height(24.dp))
-                    HorizontalDivider()
-                    Text("Removed Staples", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(vertical = 12.dp))
-                }
-                items(removedStaples, key = { "removed|" + it.id }) { staple ->
-                    RemovedStapleListItem(staple = staple, onRestore = { viewModel.restoreStaple(staple) })
-                }
+            if (showAddDialog) {
+                DialogUnderlay(onDismiss = { showAddDialog = false })
             }
         }
     }
