@@ -32,6 +32,7 @@ data class RecipeEditState(
     val notes: String = "",
     val ingredients: List<IngredientInput> = listOf(IngredientInput()),
     val selectedTagIds: Set<String> = emptySet(),
+    val selectedCategoryIds: Set<String> = emptySet(),
     val isNew: Boolean = true,
     val isSaving: Boolean = false
 )
@@ -43,17 +44,31 @@ class RecipeEditViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val recipeId: String? = savedStateHandle.get<String>("recipeId")?.takeIf { it != "new" }
+    private val initialCategoryId: String? = savedStateHandle.get<String>("initialCategoryId")
 
     private val _state = MutableStateFlow(RecipeEditState())
     val state: StateFlow<RecipeEditState> = _state
 
     val allTags: StateFlow<List<TagEntity>> = repository.getAllTags()
+        .map { list -> list.distinctBy { it.name.lowercase().trim() } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val mostFrequentTags: StateFlow<List<TagEntity>> = repository.getMostFrequentTags()
+        .map { list -> list.distinctBy { it.name.lowercase().trim() } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allCategories: StateFlow<List<RecipeCategoryEntity>> = repository.getAllCategories()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
-        recipeId?.let { id ->
+        if (recipeId == null) {
+            // New recipe: apply initial category if provided
+            initialCategoryId?.let { cid ->
+                _state.update { it.copy(selectedCategoryIds = setOf(cid)) }
+            }
+        } else {
             viewModelScope.launch {
-                repository.getRecipeFull(id).firstOrNull()?.let { full ->
+                repository.getRecipeFull(recipeId).firstOrNull()?.let { full ->
                     _state.value = RecipeEditState(
                         id = full.recipe.id,
                         name = full.recipe.name,
@@ -69,6 +84,7 @@ class RecipeEditViewModel @Inject constructor(
                             IngredientInput(it.id, it.name, it.quantity, it.unit, it.category)
                         }.ifEmpty { listOf(IngredientInput()) },
                         selectedTagIds = full.tags.map { it.id }.toSet(),
+                        selectedCategoryIds = full.categories.map { it.id }.toSet(),
                         isNew = false
                     )
                 }
@@ -114,11 +130,29 @@ class RecipeEditViewModel @Inject constructor(
         }
     }
 
+    fun toggleCategory(categoryId: String) {
+        _state.update { state ->
+            state.copy(
+                selectedCategoryIds = if (categoryId in state.selectedCategoryIds)
+                    state.selectedCategoryIds - categoryId
+                else
+                    state.selectedCategoryIds + categoryId
+            )
+        }
+    }
+
     fun createTag(name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isBlank()) return
         viewModelScope.launch {
-            val tag = TagEntity(name = name)
-            repository.insertTag(tag)
-            _state.update { it.copy(selectedTagIds = it.selectedTagIds + tag.id) }
+            val existing = allTags.value.find { it.name.equals(trimmed, ignoreCase = true) }
+            if (existing != null) {
+                toggleTag(existing.id)
+            } else {
+                val tag = TagEntity(name = trimmed)
+                repository.insertTag(tag)
+                _state.update { it.copy(selectedTagIds = it.selectedTagIds + tag.id) }
+            }
         }
     }
 
@@ -145,7 +179,7 @@ class RecipeEditViewModel @Inject constructor(
                 .filter { it.name.isNotBlank() }
                 .map { IngredientEntity(it.id, s.id, it.name.trim(), it.quantity.trim(), it.unit.trim(), it.category.trim()) }
 
-            repository.saveRecipe(recipe, ingredients, s.selectedTagIds.toList())
+            repository.saveRecipe(recipe, ingredients, s.selectedTagIds.toList(), s.selectedCategoryIds.toList())
             _state.update { it.copy(isSaving = false) }
             onComplete()
         }

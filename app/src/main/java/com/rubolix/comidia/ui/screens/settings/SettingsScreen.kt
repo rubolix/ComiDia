@@ -75,6 +75,16 @@ fun SettingsScreen(
                     }
                 }
             )
+            ListItem(
+                headlineContent = { Text("Reset Categories to Defaults") },
+                supportingContent = { Text("Restore the default hierarchical category tree") },
+                leadingContent = { Icon(Icons.Default.Refresh, null) },
+                trailingContent = {
+                    TextButton(onClick = { viewModel.resetCategories() }) {
+                        Text("Reset")
+                    }
+                }
+            )
         }
     }
 }

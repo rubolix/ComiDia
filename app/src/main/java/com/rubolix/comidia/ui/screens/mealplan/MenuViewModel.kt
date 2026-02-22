@@ -149,6 +149,36 @@ class MenuViewModel @Inject constructor(
         }
     }
 
+    fun moveRecipeBetweenSlots(
+        fromSub: String, fromMeal: String, recipeId: String,
+        toSub: String, toMeal: String
+    ) {
+        viewModelScope.launch {
+            // Logic: remove from old, add to new. 
+            // In a more complex DB schema we might just update the mealSlotId, 
+            // but here MealSlot is defined by (date, type).
+            mealPlanRepository.removeRecipeFromSlot(fromSub, fromMeal, recipeId)
+            mealPlanRepository.addRecipeToSlot(toSub, toMeal, recipeId, false, false)
+        }
+    }
+
+    fun moveCustomEntryBetweenSlots(
+        fromSub: String, fromMeal: String, entryId: String,
+        toSub: String, toMeal: String
+    ) {
+        viewModelScope.launch {
+            // Find the entry details first
+            val slot = mealSlots.value.find { it.mealSlot.date == fromSub && it.mealSlot.mealType == fromMeal }
+            val entry = slot?.customEntries?.find { it.id == entryId } ?: return@launch
+            
+            mealPlanRepository.removeCustomEntryFromSlot(entryId)
+            mealPlanRepository.addCustomEntryToSlot(
+                toSub, toMeal, entry.title, entry.type, 
+                entry.isLeftover, entry.generatesLeftovers
+            )
+        }
+    }
+
     fun addWeeklyItem(text: String) {
         viewModelScope.launch {
             mealPlanRepository.addWeeklyItem(

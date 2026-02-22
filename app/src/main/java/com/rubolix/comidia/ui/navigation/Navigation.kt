@@ -18,12 +18,17 @@ sealed class Screen(val route: String) {
     data object RecipeDetail : Screen("recipes/{recipeId}") {
         fun createRoute(recipeId: String) = "recipes/$recipeId"
     }
-    data object RecipeEdit : Screen("recipes/{recipeId}/edit") {
-        fun createRoute(recipeId: String) = "recipes/$recipeId/edit"
+    data object RecipeEdit : Screen("recipes/{recipeId}/edit?initialCategoryId={initialCategoryId}") {
+        fun createRoute(recipeId: String, initialCategoryId: String? = null) = 
+            "recipes/$recipeId/edit" + (initialCategoryId?.let { "?initialCategoryId=$it" } ?: "")
     }
     data object Ingredients : Screen("ingredients")
     data object ShoppingList : Screen("shopping_list")
     data object Staples : Screen("staples")
+    data object ManageCategories : Screen("manage_categories")
+    data object CategoryRecipes : Screen("manage_categories/{categoryId}/recipes") {
+        fun createRoute(categoryId: String) = "manage_categories/$categoryId/recipes"
+    }
     data object Settings : Screen("settings")
     data object SettingsCalendar : Screen("settings/calendar")
     data object SettingsBalance : Screen("settings/balance")

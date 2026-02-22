@@ -53,12 +53,18 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _isSeeding.value = true
             withContext(Dispatchers.IO) {
-                database.runInTransaction {
-                    DatabaseSeeder.seedDatabase(database.openHelper.writableDatabase)
-                }
+                DatabaseSeeder.seedDatabase(database.openHelper.writableDatabase)
             }
             _isSeeding.value = false
             _wasSeeded.value = true
+        }
+    }
+
+    fun resetCategories() {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                DatabaseSeeder.seedDefaultCategories(database.openHelper.writableDatabase)
+            }
         }
     }
 }
